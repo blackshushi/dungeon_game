@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dungeon Game</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">DG</div>
+          <div>
+            <h1>Dungeon Game</h1>
+            <p id="subtitle">Lobby</p>
+          </div>
+        </div>
+        <button id="lobbyButton" class="icon-button" type="button" title="Back to lobby" aria-label="Back to lobby" hidden>
+          <span aria-hidden="true">&lt;</span>
+        </button>
+      </header>
+
+      <section id="lobbyView" class="view lobby-view">
+        <section class="panel profile-panel" aria-labelledby="profileTitle">
+          <h2 id="profileTitle">Explorer</h2>
+          <form id="profileForm" class="profile-form">
+            <label for="usernameInput">User name</label>
+            <div class="input-row">
+              <input id="usernameInput" type="text" maxlength="24" autocomplete="nickname" placeholder="Alex">
+              <button class="primary-button" type="submit">Enter</button>
+            </div>
+          </form>
+
+          <div class="stats-grid" aria-live="polite">
+            <div>
+              <span>Current rank</span>
+              <strong id="rankValue">-</strong>
+            </div>
+            <div>
+              <span>Latest dungeon level</span>
+              <strong id="latestLevelValue">-</strong>
+            </div>
+            <div>
+              <span>Best total time</span>
+              <strong id="totalTimeValue">-</strong>
+            </div>
+          </div>
+
+          <div class="lobby-actions">
+            <button id="startButton" class="primary-button wide" type="button">Start New Game</button>
+          </div>
+        </section>
+
+        <section class="panel leaderboard-panel" aria-labelledby="leaderboardTitle">
+          <h2 id="leaderboardTitle">Rank</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">Time</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel levels-panel" aria-labelledby="levelsTitle">
+          <h2 id="levelsTitle">Levels</h2>
+          <div id="levelList" class="level-list"></div>
+        </section>
+      </section>
+
+      <section id="gameView" class="view game-view" hidden>
+        <section class="game-shell">
+          <div class="hud" aria-live="polite">
+            <div>
+              <span>Explorer</span>
+              <strong id="playerNameValue">-</strong>
+            </div>
+            <div>
+              <span>Level</span>
+              <strong id="levelValue">-</strong>
+            </div>
+            <div>
+              <span>HP</span>
+              <strong id="hpValue">3/5</strong>
+            </div>
+            <div>
+              <span>Time</span>
+              <strong id="timerValue">0.0s</strong>
+            </div>
+            <div>
+              <span>Best</span>
+              <strong id="bestTimeValue">-</strong>
+            </div>
+          </div>
+
+          <div class="board-wrap">
+            <div id="board" class="board" aria-label="Dungeon map"></div>
+          </div>
+        </section>
+
+        <aside class="panel game-side" aria-labelledby="levelName">
+          <div>
+            <h2 id="levelName">Level</h2>
+            <p id="levelMeta">-</p>
+          </div>
+
+          <div class="legend" aria-label="Tile legend">
+            <div><span class="legend-swatch path"></span>Path</div>
+            <div><span class="legend-swatch wall"></span>Wall</div>
+            <div><span class="legend-swatch bomb"></span>Bomb</div>
+            <div><span class="legend-swatch heal"></span>Healing pot</div>
+          </div>
+
+          <div class="move-pad" aria-label="Move controls">
+            <button type="button" data-move="up" title="Move up" aria-label="Move up">^</button>
+            <button type="button" data-move="left" title="Move left" aria-label="Move left">&lt;</button>
+            <button type="button" data-move="down" title="Move down" aria-label="Move down">v</button>
+            <button type="button" data-move="right" title="Move right" aria-label="Move right">&gt;</button>
+          </div>
+
+          <div id="eventLog" class="event-log" aria-live="polite"></div>
+        </aside>
+      </section>
+    </main>
+
+    <dialog id="resultDialog" class="result-dialog">
+      <h2 id="resultTitle">Level clear</h2>
+      <p id="resultText"></p>
+      <div class="dialog-actions">
+        <button id="retryButton" class="ghost-button" type="button">Retry</button>
+        <button id="nextButton" class="primary-button" type="button">Next Level</button>
+      </div>
+    </dialog>
+
+    <script src="levels.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
