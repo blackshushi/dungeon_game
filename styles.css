@@ -261,13 +261,25 @@ th:last-child {
 }
 
 .level-card {
+  appearance: none;
   display: grid;
   gap: 7px;
+  width: 100%;
   min-height: 86px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
   background: #191c17;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.level-card:hover:not(:disabled),
+.level-card:focus-visible:not(:disabled) {
+  border-color: rgba(137, 197, 131, 0.7);
+  transform: translateY(-1px);
 }
 
 .level-card strong {
@@ -281,6 +293,20 @@ th:last-child {
 
 .level-card.clear {
   border-color: rgba(98, 198, 167, 0.5);
+}
+
+.level-card.next {
+  border-color: rgba(255, 209, 102, 0.75);
+}
+
+.level-card.locked {
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+.level-status {
+  font-size: 0.78rem;
+  color: #c9d2b5;
 }
 
 .game-view {
