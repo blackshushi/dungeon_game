@@ -7,6 +7,6 @@
     "serve": "node scripts/serve.js 5173",
     "sync:levels": "node scripts/sync-levels.js",
     "validate": "node scripts/validate-levels.js && node scripts/sync-levels.js --check",
-    "test": "node scripts/test-level-validator.js && node scripts/test-progression.js && node scripts/test-result-actions.js"
+    "test": "node scripts/test-level-validator.js && node scripts/test-progression.js && node scripts/test-result-actions.js && node scripts/test-app-profile-bootstrap.js"
   }
 }

@@ -113,10 +113,7 @@ function bindEvents() {
   });
 
   els.startButton.addEventListener("click", () => {
-    if (!state.activeName) {
-      selectProfile(els.usernameInput.value || "Explorer");
-    }
-    const profile = getActiveProfile();
+    const profile = ensureActiveProfileForRun();
     const nextLevelId = progression.getNextLevelId(profile?.latestLevel || 0, state.levels.length);
     startLevel(nextLevelId || 1);
   });
@@ -305,10 +302,20 @@ function renderLevelList(profile) {
       <span class="level-status">${status}</span>
     `;
     if (unlocked) {
-      card.addEventListener("click", () => startLevel(level.id));
+      card.addEventListener("click", () => {
+        ensureActiveProfileForRun();
+        startLevel(level.id);
+      });
     }
     els.levelList.append(card);
   });
+}
+
+function ensureActiveProfileForRun() {
+  if (!state.activeName) {
+    selectProfile(els.usernameInput.value || "Explorer");
+  }
+  return getActiveProfile();
 }
 
 function startLevel(levelId) {
