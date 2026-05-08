@@ -1,5 +1,9 @@
 const assert = require("node:assert/strict");
-const { validateLevelData } = require("./level-validator");
+const {
+  hasSurvivableDirectPath,
+  hasSurvivablePath,
+  validateLevelData,
+} = require("./level-validator");
 
 let passed = 0;
 let failed = 0;
@@ -122,6 +126,30 @@ runTest("rejects levels without a survivable path", () => {
   assert.throws(
     () => validateLevelData(data),
     /has no survivable path/,
+  );
+});
+
+runTest("rejects levels that require looping to farm healing", () => {
+  const data = createValidData({
+    levels: [
+      {
+        id: 1,
+        name: "Healing Loop",
+        size: [4, 3],
+        grid: [
+          "SBBB",
+          "H##B",
+          "###E",
+        ],
+      },
+    ],
+  });
+
+  assert.equal(hasSurvivablePath(data.levels[0].grid, data.startHp, data.maxHp), true);
+  assert.equal(hasSurvivableDirectPath(data.levels[0].grid, data.startHp, data.maxHp), false);
+  assert.throws(
+    () => validateLevelData(data),
+    /has no survivable direct path/,
   );
 });
 

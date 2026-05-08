@@ -1,6 +1,9 @@
 const assert = require("node:assert/strict");
 const levelData = require("../levels.json");
-const { hasSurvivablePath } = require("./level-validator");
+const {
+  hasSurvivableDirectPath,
+  hasSurvivablePath,
+} = require("./level-validator");
 
 let passed = 0;
 let failed = 0;
@@ -34,6 +37,14 @@ runTest("level 32 has a valid survivable route", () => {
   assert.equal(finalLevel.grid[0][0], "S");
   assert.equal(finalLevel.grid[finalLevel.size[1] - 1][finalLevel.size[0] - 1], "E");
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
+});
+
+runTest("every shipped level has a direct survivable route", () => {
+  const blockedLevels = levelData.levels
+    .filter((level) => !hasSurvivableDirectPath(level.grid, levelData.startHp, levelData.maxHp))
+    .map((level) => level.id);
+
+  assert.deepEqual(blockedLevels, []);
 });
 
 console.log(`\n${passed} passed, ${failed} failed.`);

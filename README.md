@@ -33,4 +33,4 @@ Level tiles:
 - `B`: bomb, HP -1
 - `H`: healing pot, HP +1
 
-Every level starts at top-left, exits at bottom-right, and must have a survivable path.
+Every level starts at top-left, exits at bottom-right, and must have a survivable direct path.
