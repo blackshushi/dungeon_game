@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const {
+  findSurvivableDirectPath,
   hasSurvivableDirectPath,
   hasSurvivablePath,
   validateLevelData,
@@ -147,10 +148,27 @@ runTest("rejects levels that require looping to farm healing", () => {
 
   assert.equal(hasSurvivablePath(data.levels[0].grid, data.startHp, data.maxHp), true);
   assert.equal(hasSurvivableDirectPath(data.levels[0].grid, data.startHp, data.maxHp), false);
+  assert.equal(findSurvivableDirectPath(data.levels[0].grid, data.startHp, data.maxHp), null);
   assert.throws(
     () => validateLevelData(data),
     /has no survivable direct path/,
   );
+});
+
+runTest("returns a playable direct route with HP after each step", () => {
+  const route = findSurvivableDirectPath([
+    "S.H",
+    ".#B",
+    "..E",
+  ], 3, 5);
+
+  assert.deepEqual(route, [
+    { x: 0, y: 0, tile: "S", hp: 3 },
+    { x: 1, y: 0, tile: ".", hp: 3 },
+    { x: 2, y: 0, tile: "H", hp: 4 },
+    { x: 2, y: 1, tile: "B", hp: 3 },
+    { x: 2, y: 2, tile: "E", hp: 3 },
+  ]);
 });
 
 runTest("rejects non-string grid rows", () => {

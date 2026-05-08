@@ -175,23 +175,28 @@ function hasSurvivablePath(grid, startHp, maxHp) {
 }
 
 function hasSurvivableDirectPath(grid, startHp, maxHp) {
+  return Boolean(findSurvivableDirectPath(grid, startHp, maxHp));
+}
+
+function findSurvivableDirectPath(grid, startHp, maxHp) {
   const height = grid.length;
   const width = grid[0].length;
   const startDistances = buildDistanceMap(grid, 0, 0);
   const shortestDistance = startDistances[height - 1][width - 1];
 
   if (!Number.isFinite(shortestDistance)) {
-    return false;
+    return null;
   }
 
   const exitDistances = buildDistanceMap(grid, width - 1, height - 1);
   const queue = [{ x: 0, y: 0, hp: startHp, distance: 0 }];
   const seen = new Set([stateKey(0, 0, startHp)]);
+  const parents = new Map();
 
   while (queue.length) {
     const current = queue.shift();
     if (current.x === width - 1 && current.y === height - 1) {
-      return true;
+      return buildRoute(current, parents, grid);
     }
 
     for (const delta of DELTAS) {
@@ -225,11 +230,33 @@ function hasSurvivableDirectPath(grid, startHp, maxHp) {
         continue;
       }
       seen.add(key);
+      parents.set(key, { x: current.x, y: current.y, hp: current.hp });
       queue.push({ ...next, distance });
     }
   }
 
-  return false;
+  return null;
+}
+
+function buildRoute(endState, parents, grid) {
+  const route = [];
+  let current = {
+    x: endState.x,
+    y: endState.y,
+    hp: endState.hp,
+  };
+
+  while (current) {
+    route.push({
+      x: current.x,
+      y: current.y,
+      tile: grid[current.y][current.x],
+      hp: current.hp,
+    });
+    current = parents.get(stateKey(current.x, current.y, current.hp)) || null;
+  }
+
+  return route.reverse();
 }
 
 function buildDistanceMap(grid, startX, startY) {
@@ -282,4 +309,5 @@ module.exports = {
   validateLevelData,
   hasSurvivablePath,
   hasSurvivableDirectPath,
+  findSurvivableDirectPath,
 };

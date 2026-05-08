@@ -18,6 +18,12 @@ Open `http://127.0.0.1:5173`.
 npm run validate
 ```
 
+To simulate a full survivable route through every level from level 1 onward:
+
+```powershell
+npm run playthrough
+```
+
 If you edit `levels.json`, sync the browser fallback:
 
 ```powershell
