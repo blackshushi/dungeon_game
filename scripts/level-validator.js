@@ -1,4 +1,10 @@
 const REQUIRED_TILES = new Set(["S", "E", ".", "#", "B", "H"]);
+const DELTAS = [
+  { x: 0, y: -1 },
+  { x: 1, y: 0 },
+  { x: 0, y: 1 },
+  { x: -1, y: 0 },
+];
 
 function validateLevelData(data) {
   if (!data || typeof data !== "object") {
@@ -119,6 +125,9 @@ function validateLevel(level, context) {
   if (!hasSurvivablePath(level.grid, context.startHp, context.maxHp)) {
     throw new Error(`Level ${level.id} has no survivable path`);
   }
+  if (!hasSurvivableDirectPath(level.grid, context.startHp, context.maxHp)) {
+    throw new Error(`Level ${level.id} has no survivable direct path`);
+  }
 }
 
 function hasSurvivablePath(grid, startHp, maxHp) {
@@ -126,12 +135,6 @@ function hasSurvivablePath(grid, startHp, maxHp) {
   const width = grid[0].length;
   const queue = [{ x: 0, y: 0, hp: startHp }];
   const seen = new Set([stateKey(0, 0, startHp)]);
-  const deltas = [
-    { x: 0, y: -1 },
-    { x: 1, y: 0 },
-    { x: 0, y: 1 },
-    { x: -1, y: 0 },
-  ];
 
   while (queue.length) {
     const current = queue.shift();
@@ -139,7 +142,7 @@ function hasSurvivablePath(grid, startHp, maxHp) {
       return true;
     }
 
-    for (const delta of deltas) {
+    for (const delta of DELTAS) {
       const next = {
         x: current.x + delta.x,
         y: current.y + delta.y,
@@ -154,12 +157,7 @@ function hasSurvivablePath(grid, startHp, maxHp) {
       if (tile === "#") {
         continue;
       }
-      if (tile === "B") {
-        next.hp -= 1;
-      }
-      if (tile === "H") {
-        next.hp = Math.min(maxHp, next.hp + 1);
-      }
+      next.hp = applyTileHealth(next.hp, tile, maxHp);
       if (next.hp <= 0) {
         continue;
       }
@@ -176,6 +174,106 @@ function hasSurvivablePath(grid, startHp, maxHp) {
   return false;
 }
 
+function hasSurvivableDirectPath(grid, startHp, maxHp) {
+  const height = grid.length;
+  const width = grid[0].length;
+  const startDistances = buildDistanceMap(grid, 0, 0);
+  const shortestDistance = startDistances[height - 1][width - 1];
+
+  if (!Number.isFinite(shortestDistance)) {
+    return false;
+  }
+
+  const exitDistances = buildDistanceMap(grid, width - 1, height - 1);
+  const queue = [{ x: 0, y: 0, hp: startHp, distance: 0 }];
+  const seen = new Set([stateKey(0, 0, startHp)]);
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.x === width - 1 && current.y === height - 1) {
+      return true;
+    }
+
+    for (const delta of DELTAS) {
+      const next = {
+        x: current.x + delta.x,
+        y: current.y + delta.y,
+        hp: current.hp,
+      };
+
+      if (next.x < 0 || next.y < 0 || next.x >= width || next.y >= height) {
+        continue;
+      }
+
+      const tile = grid[next.y][next.x];
+      const distance = startDistances[next.y][next.x];
+      if (
+        tile === "#" ||
+        distance !== current.distance + 1 ||
+        distance + exitDistances[next.y][next.x] !== shortestDistance
+      ) {
+        continue;
+      }
+
+      next.hp = applyTileHealth(next.hp, tile, maxHp);
+      if (next.hp <= 0) {
+        continue;
+      }
+
+      const key = stateKey(next.x, next.y, next.hp);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      queue.push({ ...next, distance });
+    }
+  }
+
+  return false;
+}
+
+function buildDistanceMap(grid, startX, startY) {
+  const height = grid.length;
+  const width = grid[0].length;
+  const distances = Array.from({ length: height }, () => Array(width).fill(Infinity));
+  const queue = [{ x: startX, y: startY }];
+  distances[startY][startX] = 0;
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const current = queue[index];
+    const nextDistance = distances[current.y][current.x] + 1;
+
+    for (const delta of DELTAS) {
+      const next = {
+        x: current.x + delta.x,
+        y: current.y + delta.y,
+      };
+
+      if (next.x < 0 || next.y < 0 || next.x >= width || next.y >= height) {
+        continue;
+      }
+      if (grid[next.y][next.x] === "#" || distances[next.y][next.x] <= nextDistance) {
+        continue;
+      }
+
+      distances[next.y][next.x] = nextDistance;
+      queue.push(next);
+    }
+  }
+
+  return distances;
+}
+
+function applyTileHealth(hp, tile, maxHp) {
+  if (tile === "B") {
+    return hp - 1;
+  }
+  if (tile === "H") {
+    return Math.min(maxHp, hp + 1);
+  }
+  return hp;
+}
+
 function stateKey(x, y, hp) {
   return `${x},${y},${hp}`;
 }
@@ -183,4 +281,5 @@ function stateKey(x, y, hp) {
 module.exports = {
   validateLevelData,
   hasSurvivablePath,
+  hasSurvivableDirectPath,
 };
