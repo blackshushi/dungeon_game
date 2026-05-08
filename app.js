@@ -9,6 +9,37 @@ const TILE = {
   bomb: "B",
   heal: "H",
 };
+const progression = window.DungeonProgression || {
+  getNextLevelId(latestLevel, totalLevels) {
+    const total = Number.isInteger(totalLevels) && totalLevels > 0 ? totalLevels : 0;
+    if (!total) {
+      return 0;
+    }
+    const latest = Number.isInteger(latestLevel) && latestLevel > 0 ? latestLevel : 0;
+    return Math.min(total, latest + 1);
+  },
+  isLevelUnlocked(levelId, latestLevel, totalLevels) {
+    const total = Number.isInteger(totalLevels) && totalLevels > 0 ? totalLevels : 0;
+    if (!total || !Number.isInteger(levelId) || levelId < 1 || levelId > total) {
+      return false;
+    }
+    return levelId <= this.getNextLevelId(latestLevel, total);
+  },
+};
+const resultActions = window.DungeonResultActions || {
+  getPrimaryAction(options) {
+    const failed = Boolean(options && options.failed);
+    const totalLevels = Number.isInteger(options?.totalLevels) && options.totalLevels > 0 ? options.totalLevels : 0;
+    if (failed) {
+      return { type: "lobby" };
+    }
+    const currentLevel = Number.isInteger(options?.currentLevel) && options.currentLevel > 0 ? options.currentLevel : 1;
+    if (!totalLevels || currentLevel >= totalLevels) {
+      return { type: "lobby" };
+    }
+    return { type: "next", targetLevel: currentLevel + 1 };
+  },
+};
 
 const state = {
   levels: [],
@@ -82,10 +113,9 @@ function bindEvents() {
   });
 
   els.startButton.addEventListener("click", () => {
-    if (!state.activeName) {
-      selectProfile(els.usernameInput.value || "Explorer");
-    }
-    startLevel(1);
+    const profile = ensureActiveProfileForRun();
+    const nextLevelId = progression.getNextLevelId(profile?.latestLevel || 0, state.levels.length);
+    startLevel(nextLevelId || 1);
   });
 
   els.lobbyButton.addEventListener("click", showLobby);
@@ -94,13 +124,17 @@ function bindEvents() {
     startLevel(state.game?.level.id || 1);
   });
   els.nextButton.addEventListener("click", () => {
-    const nextLevel = state.game ? state.game.level.id + 1 : 1;
+    const action = resultActions.getPrimaryAction({
+      failed: els.nextButton.dataset.failed === "true",
+      currentLevel: state.game?.level.id || 1,
+      totalLevels: state.levels.length,
+    });
     closeResult();
-    if (nextLevel > state.levels.length) {
+    if (action.type === "lobby") {
       showLobby();
-    } else {
-      startLevel(nextLevel);
+      return;
     }
+    startLevel(action.targetLevel || 1);
   });
 
   document.querySelectorAll("[data-move]").forEach((button) => {
@@ -208,6 +242,14 @@ function renderLobby() {
   els.latestLevelValue.textContent = profile ? `${profile.latestLevel}/${state.levels.length || 10}` : "-";
   els.totalTimeValue.textContent = profile && getTotalBestTime(profile) ? formatTime(getTotalBestTime(profile)) : "-";
   els.startButton.disabled = !state.levels.length;
+  const nextLevelId = progression.getNextLevelId(profile?.latestLevel || 0, state.levels.length);
+  if (!state.levels.length || nextLevelId <= 1) {
+    els.startButton.textContent = "Start New Game";
+  } else if (profile?.latestLevel >= state.levels.length) {
+    els.startButton.textContent = "Replay Final Level";
+  } else {
+    els.startButton.textContent = `Continue at Level ${nextLevelId}`;
+  }
 
   renderLeaderboard();
   renderLevelList(profile);
@@ -238,17 +280,42 @@ function renderLeaderboard() {
 
 function renderLevelList(profile) {
   els.levelList.innerHTML = "";
+  const latestLevel = Number(profile?.latestLevel || 0);
+  const nextLevelId = progression.getNextLevelId(latestLevel, state.levels.length);
+
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
-    const card = document.createElement("div");
-    card.className = `level-card${best ? " clear" : ""}`;
+    const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.disabled = !unlocked;
+    card.className = `level-card${best ? " clear" : ""}${!unlocked ? " locked" : ""}${unlocked && !best && level.id === nextLevelId ? " next" : ""}`;
+    const status = !unlocked
+      ? `Clear level ${Math.max(1, level.id - 1)} to unlock`
+      : best
+        ? "Cleared"
+        : (level.id === nextLevelId ? "Ready to play" : "Replay");
     card.innerHTML = `
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
       <span>${best ? formatTime(best) : `${level.size[0]} x ${level.size[1]}`}</span>
+      <span class="level-status">${status}</span>
     `;
+    if (unlocked) {
+      card.addEventListener("click", () => {
+        ensureActiveProfileForRun();
+        startLevel(level.id);
+      });
+    }
     els.levelList.append(card);
   });
+}
+
+function ensureActiveProfileForRun() {
+  if (!state.activeName) {
+    selectProfile(els.usernameInput.value || "Explorer");
+  }
+  return getActiveProfile();
 }
 
 function startLevel(levelId) {
@@ -434,7 +501,7 @@ function completeLevel() {
 function failLevel() {
   state.game.done = true;
   stopTimer();
-  openResult("Run ended", "HP reached 0.", "Retry", true);
+  openResult("Run ended", "HP reached 0.", "Back to Lobby", true);
   renderGame();
 }
 
