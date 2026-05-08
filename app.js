@@ -330,7 +330,7 @@ function startLevel(levelId) {
     level,
     position: start,
     hp: START_HP,
-    startedAt: performance.now(),
+    startedAt: null,
     elapsedMs: 0,
     done: false,
     message: "Point A is open.",
@@ -340,7 +340,6 @@ function startLevel(levelId) {
   els.lobbyButton.hidden = false;
   els.lobbyView.hidden = true;
   els.gameView.hidden = false;
-  startTimer();
   renderGame();
 }
 
@@ -429,6 +428,10 @@ function move(direction) {
     right: { x: 1, y: 0 },
   };
   const delta = deltas[direction];
+  if (!delta) {
+    return;
+  }
+  startRunTimer();
   const next = {
     x: state.game.position.x + delta.x,
     y: state.game.position.y + delta.y,
@@ -470,7 +473,7 @@ function applyTile(tile) {
 }
 
 function completeLevel() {
-  const elapsedMs = performance.now() - state.game.startedAt;
+  const elapsedMs = getCurrentElapsedMs();
   const profile = getActiveProfile();
   state.game.done = true;
   state.game.elapsedMs = elapsedMs;
@@ -540,13 +543,28 @@ function stopTimer() {
   }
 }
 
+function startRunTimer() {
+  if (!state.game || Number.isFinite(state.game.startedAt)) {
+    return;
+  }
+  state.game.startedAt = performance.now();
+  startTimer();
+}
+
+function getCurrentElapsedMs() {
+  if (!state.game || !Number.isFinite(state.game.startedAt)) {
+    return state.game?.elapsedMs || 0;
+  }
+  return state.game.done ? state.game.elapsedMs : performance.now() - state.game.startedAt;
+}
+
 function renderTimer() {
   if (!state.game) {
     els.timerValue.textContent = "0.0s";
     return;
   }
-  const elapsed = state.game.done ? state.game.elapsedMs : performance.now() - state.game.startedAt;
-  els.timerValue.textContent = formatTime(elapsed);
+  const elapsed = getCurrentElapsedMs();
+  els.timerValue.textContent = elapsed > 0 ? formatTime(elapsed) : "0.0s";
 }
 
 function findTile(grid, tile) {
