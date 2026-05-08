@@ -132,6 +132,8 @@ function createHarness() {
   };
 
   let now = 1000;
+  let intervalStarts = 0;
+  let intervalClears = 0;
   const window = {
     DUNGEON_LEVEL_DATA: {
       levels: [
@@ -157,9 +159,12 @@ function createHarness() {
     },
     addEventListener() {},
     setInterval() {
-      return 1;
+      intervalStarts += 1;
+      return intervalStarts;
     },
-    clearInterval() {},
+    clearInterval() {
+      intervalClears += 1;
+    },
   };
 
   return {
@@ -185,6 +190,12 @@ function createHarness() {
     elements,
     moveButtons: Object.fromEntries(moveButtons.map((button) => [button.dataset.move, button])),
     store,
+    getIntervalStarts() {
+      return intervalStarts;
+    },
+    getIntervalClears() {
+      return intervalClears;
+    },
   };
 }
 
@@ -199,8 +210,13 @@ async function runTest() {
 
   assert.equal(harness.elements.levelList.children.length, 2);
   harness.elements.levelList.children[0].click();
+  assert.equal(harness.elements.timerValue.textContent, "0.0s");
+  assert.equal(harness.getIntervalStarts(), 0);
+
   harness.moveButtons.right.click();
+  assert.equal(harness.getIntervalStarts(), 1);
   harness.moveButtons.down.click();
+  assert.equal(harness.getIntervalClears(), 1);
 
   assert.equal(harness.store.get(ACTIVE_NAME_KEY), "Dana");
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
