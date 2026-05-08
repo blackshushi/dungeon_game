@@ -483,11 +483,7 @@ function completeLevel() {
     const oldBest = profile.bestTimes[state.game.level.id];
     profile.bestTimes[state.game.level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
     profile.latestLevel = Math.max(profile.latestLevel, state.game.level.id);
-    profile.runs.push({
-      level: state.game.level.id,
-      timeMs: Math.round(elapsedMs),
-      completedAt: new Date().toISOString(),
-    });
+    recordRunEnd(profile, "cleared", elapsedMs);
     saveProfiles();
   }
 
@@ -502,10 +498,42 @@ function completeLevel() {
 }
 
 function failLevel() {
+  const elapsedMs = getCurrentElapsedMs();
+  const profile = getActiveProfile();
   state.game.done = true;
+  state.game.elapsedMs = elapsedMs;
   stopTimer();
-  openResult("Run ended", "HP reached 0.", "Back to Lobby", true);
+  if (profile) {
+    recordRunEnd(profile, "failed", elapsedMs);
+    saveProfiles();
+  }
+  openResult("Run ended", `HP reached 0 after ${formatTime(elapsedMs)}.`, "Back to Lobby", true);
   renderGame();
+}
+
+function recordRunEnd(profile, outcome, elapsedMs) {
+  if (!Array.isArray(profile.runs)) {
+    profile.runs = [];
+  }
+
+  const endedAt = new Date().toISOString();
+  const run = {
+    level: state.game.level.id,
+    outcome,
+    timeMs: Math.round(elapsedMs),
+    hp: state.game.hp,
+    position: {
+      x: state.game.position.x,
+      y: state.game.position.y,
+    },
+    endedAt,
+  };
+
+  if (outcome === "cleared") {
+    run.completedAt = endedAt;
+  }
+
+  profile.runs.push(run);
 }
 
 function openResult(title, text, nextLabel, failed) {

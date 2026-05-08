@@ -148,11 +148,10 @@ function createHarness() {
         },
         {
           id: 2,
-          name: "Next Room",
-          size: [2, 2],
+          name: "Trap Hall",
+          size: [5, 1],
           grid: [
-            "S.",
-            ".E",
+            "SBBBE",
           ],
         },
       ],
@@ -223,6 +222,23 @@ async function runTest() {
   assert.equal(profiles.Dana.latestLevel, 1);
   assert.ok(profiles.Dana.bestTimes["1"] > 0);
   assert.equal(profiles.Dana.runs.length, 1);
+  assert.equal(profiles.Dana.runs[0].outcome, "cleared");
+  assert.equal(profiles.Dana.runs[0].hp, 3);
+  assert.deepEqual(profiles.Dana.runs[0].position, { x: 1, y: 1 });
+
+  harness.elements.nextButton.click();
+  harness.moveButtons.right.click();
+  harness.moveButtons.right.click();
+  harness.moveButtons.right.click();
+
+  const updatedProfiles = JSON.parse(harness.store.get(STORAGE_KEY));
+  assert.equal(updatedProfiles.Dana.latestLevel, 1);
+  assert.equal(updatedProfiles.Dana.bestTimes["2"], undefined);
+  assert.equal(updatedProfiles.Dana.runs.length, 2);
+  assert.equal(updatedProfiles.Dana.runs[1].outcome, "failed");
+  assert.equal(updatedProfiles.Dana.runs[1].hp, 0);
+  assert.deepEqual(updatedProfiles.Dana.runs[1].position, { x: 3, y: 0 });
+  assert.ok(updatedProfiles.Dana.runs[1].timeMs > 0);
 }
 
 runTest()
