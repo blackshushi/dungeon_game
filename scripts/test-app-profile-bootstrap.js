@@ -217,16 +217,21 @@ function summarizeRunStates(states) {
 
 async function runTest() {
   const root = path.resolve(__dirname, "..");
+  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
   const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
   harness.context.globalThis = harness.context;
+  vm.runInNewContext(summarySource, harness.context, { filename: "level-summary.js" });
   vm.runInNewContext(source, harness.context, { filename: "app.js" });
   await Promise.resolve();
 
   assert.equal(harness.elements.levelList.children.length, 2);
+  assert.match(harness.elements.levelList.children[0].innerHTML, /Calm route: 0 bombs, 0 healing pots/);
+  assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
+  assert.equal(harness.elements.levelMeta.textContent, "2 x 2 grid - 0 bombs - 0 healing pots");
   assert.equal(harness.getIntervalStarts(), 0);
 
   harness.moveButtons.left.click();
@@ -236,6 +241,7 @@ async function runTest() {
   assert.equal(harness.getIntervalStarts(), 1);
   harness.moveButtons.down.click();
   assert.equal(harness.getIntervalClears(), 1);
+  assert.match(harness.elements.resultText.textContent, /^Profile Path finished in \d+\.\ds, 2 moves, 3\/5 HP\.$/);
 
   assert.equal(harness.store.get(ACTIVE_NAME_KEY), "Dana");
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
@@ -243,6 +249,7 @@ async function runTest() {
   assert.ok(profiles.Dana.bestTimes["1"] > 0);
   assert.equal(profiles.Dana.runs.length, 1);
   assert.equal(profiles.Dana.runs[0].outcome, "cleared");
+  assert.equal(profiles.Dana.runs[0].moves, 2);
   assert.equal(profiles.Dana.runs[0].hp, 3);
   assert.deepEqual(profiles.Dana.runs[0].position, { x: 1, y: 1 });
   assert.deepEqual(
@@ -288,12 +295,14 @@ async function runTest() {
   harness.moveButtons.right.click();
   harness.moveButtons.right.click();
   harness.moveButtons.right.click();
+  assert.match(harness.elements.resultText.textContent, /^HP reached 0 after \d+\.\ds, 3 moves, 0\/5 HP\.$/);
 
   const updatedProfiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(updatedProfiles.Dana.latestLevel, 1);
   assert.equal(updatedProfiles.Dana.bestTimes["2"], undefined);
   assert.equal(updatedProfiles.Dana.runs.length, 2);
   assert.equal(updatedProfiles.Dana.runs[1].outcome, "failed");
+  assert.equal(updatedProfiles.Dana.runs[1].moves, 3);
   assert.equal(updatedProfiles.Dana.runs[1].hp, 0);
   assert.deepEqual(updatedProfiles.Dana.runs[1].position, { x: 3, y: 0 });
   assert.ok(updatedProfiles.Dana.runs[1].timeMs > 0);

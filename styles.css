@@ -291,6 +291,11 @@ th:last-child {
   font-size: 0.86rem;
 }
 
+.level-card .level-pressure {
+  color: #d9c889;
+  line-height: 1.25;
+}
+
 .level-card.clear {
   border-color: rgba(98, 198, 167, 0.5);
 }
