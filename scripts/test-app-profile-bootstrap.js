@@ -241,6 +241,7 @@ async function runTest() {
   assert.equal(harness.getIntervalStarts(), 1);
   harness.moveButtons.down.click();
   assert.equal(harness.getIntervalClears(), 1);
+  assert.match(harness.elements.resultText.textContent, /^Profile Path finished in \d+\.\ds, 2 moves, 3\/5 HP\.$/);
 
   assert.equal(harness.store.get(ACTIVE_NAME_KEY), "Dana");
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
@@ -248,6 +249,7 @@ async function runTest() {
   assert.ok(profiles.Dana.bestTimes["1"] > 0);
   assert.equal(profiles.Dana.runs.length, 1);
   assert.equal(profiles.Dana.runs[0].outcome, "cleared");
+  assert.equal(profiles.Dana.runs[0].moves, 2);
   assert.equal(profiles.Dana.runs[0].hp, 3);
   assert.deepEqual(profiles.Dana.runs[0].position, { x: 1, y: 1 });
   assert.deepEqual(
@@ -293,12 +295,14 @@ async function runTest() {
   harness.moveButtons.right.click();
   harness.moveButtons.right.click();
   harness.moveButtons.right.click();
+  assert.match(harness.elements.resultText.textContent, /^HP reached 0 after \d+\.\ds, 3 moves, 0\/5 HP\.$/);
 
   const updatedProfiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(updatedProfiles.Dana.latestLevel, 1);
   assert.equal(updatedProfiles.Dana.bestTimes["2"], undefined);
   assert.equal(updatedProfiles.Dana.runs.length, 2);
   assert.equal(updatedProfiles.Dana.runs[1].outcome, "failed");
+  assert.equal(updatedProfiles.Dana.runs[1].moves, 3);
   assert.equal(updatedProfiles.Dana.runs[1].hp, 0);
   assert.deepEqual(updatedProfiles.Dana.runs[1].position, { x: 3, y: 0 });
   assert.ok(updatedProfiles.Dana.runs[1].timeMs > 0);

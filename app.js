@@ -509,7 +509,7 @@ function completeLevel() {
   const isLastLevel = state.game.level.id >= state.levels.length;
   openResult(
     isLastLevel ? "Dungeon clear" : "Level clear",
-    `${state.game.level.name} finished in ${formatTime(elapsedMs)}.`,
+    `${state.game.level.name} finished in ${formatRunResult(elapsedMs)}.`,
     isLastLevel ? "Lobby" : "Next Level",
     false,
   );
@@ -526,7 +526,7 @@ function failLevel() {
     recordRunEnd(profile, "failed", elapsedMs);
     saveProfiles();
   }
-  openResult("Run ended", `HP reached 0 after ${formatTime(elapsedMs)}.`, "Back to Lobby", true);
+  openResult("Run ended", `HP reached 0 after ${formatRunResult(elapsedMs)}.`, "Back to Lobby", true);
   renderGame();
 }
 
@@ -541,6 +541,7 @@ function recordRunEnd(profile, outcome, elapsedMs) {
     level: state.game.level.id,
     outcome,
     timeMs: Math.round(elapsedMs),
+    moves: getRunMoveCount(),
     hp: state.game.hp,
     position: {
       x: state.game.position.x,
@@ -555,6 +556,17 @@ function recordRunEnd(profile, outcome, elapsedMs) {
   }
 
   profile.runs.push(run);
+}
+
+function getRunMoveCount() {
+  const history = Array.isArray(state.game?.history) ? state.game.history : [];
+  return history.filter((entry) => entry.moved).length;
+}
+
+function formatRunResult(elapsedMs) {
+  const moves = getRunMoveCount();
+  const moveLabel = moves === 1 ? "move" : "moves";
+  return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${MAX_HP} HP`;
 }
 
 function recordGameState(direction, tile, moved) {
