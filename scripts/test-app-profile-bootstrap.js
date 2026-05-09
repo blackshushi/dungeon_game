@@ -217,16 +217,21 @@ function summarizeRunStates(states) {
 
 async function runTest() {
   const root = path.resolve(__dirname, "..");
+  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
   const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
   harness.context.globalThis = harness.context;
+  vm.runInNewContext(summarySource, harness.context, { filename: "level-summary.js" });
   vm.runInNewContext(source, harness.context, { filename: "app.js" });
   await Promise.resolve();
 
   assert.equal(harness.elements.levelList.children.length, 2);
+  assert.match(harness.elements.levelList.children[0].innerHTML, /Calm route: 0 bombs, 0 healing pots/);
+  assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
+  assert.equal(harness.elements.levelMeta.textContent, "2 x 2 grid - 0 bombs - 0 healing pots");
   assert.equal(harness.getIntervalStarts(), 0);
 
   harness.moveButtons.left.click();

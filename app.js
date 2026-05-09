@@ -40,6 +40,19 @@ const resultActions = window.DungeonResultActions || {
     return { type: "next", targetLevel: currentLevel + 1 };
   },
 };
+const levelSummary = window.DungeonLevelSummary || globalThis.DungeonLevelSummary || {
+  getLevelSummary(level) {
+    const width = Array.isArray(level?.size) ? level.size[0] : 0;
+    const height = Array.isArray(level?.size) ? level.size[1] : 0;
+    return {
+      bombs: 0,
+      heals: 0,
+      label: "Level intel unavailable",
+      meta: `${width} x ${height} grid`,
+      pressure: "Level intel unavailable",
+    };
+  },
+};
 
 const state = {
   levels: [],
@@ -285,6 +298,7 @@ function renderLevelList(profile) {
 
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
+    const summary = levelSummary.getLevelSummary(level);
     const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
     const card = document.createElement("button");
     card.type = "button";
@@ -299,6 +313,7 @@ function renderLevelList(profile) {
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
       <span>${best ? formatTime(best) : `${level.size[0]} x ${level.size[1]}`}</span>
+      <span class="level-pressure">${escapeHtml(summary.pressure)}</span>
       <span class="level-status">${status}</span>
     `;
     if (unlocked) {
@@ -357,7 +372,7 @@ function renderGame() {
   els.hpValue.textContent = `${hp}/${MAX_HP}`;
   els.bestTimeValue.textContent = profile?.bestTimes?.[level.id] ? formatTime(profile.bestTimes[level.id]) : "-";
   els.levelName.textContent = level.name;
-  els.levelMeta.textContent = `${level.size[0]} x ${level.size[1]} grid`;
+  els.levelMeta.textContent = levelSummary.getLevelSummary(level).meta;
   els.eventLog.textContent = state.game.message;
 
   renderTimer();
