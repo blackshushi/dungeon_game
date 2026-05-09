@@ -50,6 +50,7 @@ const levelSummary = window.DungeonLevelSummary || globalThis.DungeonLevelSummar
       label: "Level intel unavailable",
       meta: `${width} x ${height} grid`,
       pressure: "Level intel unavailable",
+      routeLabel: "route unavailable",
     };
   },
 };
@@ -313,6 +314,7 @@ function renderLevelList(profile) {
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
       <span>${best ? formatTime(best) : `${level.size[0]} x ${level.size[1]}`}</span>
+      <span>${escapeHtml(summary.routeLabel)}</span>
       <span class="level-pressure">${escapeHtml(summary.pressure)}</span>
       <span class="level-status">${status}</span>
     `;
