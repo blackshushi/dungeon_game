@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const levelData = require("../levels.json");
 const {
+  findSurvivableDirectPath,
   hasSurvivableDirectPath,
   hasSurvivablePath,
 } = require("./level-validator");
@@ -20,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 32 as the final catalog entry", () => {
+runTest("ships level 33 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 32);
-  assert.equal(finalLevel.id, 32);
-  assert.equal(finalLevel.name, "Sanctum of the Dying Star");
-  assert.deepEqual(finalLevel.size, [85, 85]);
+  assert.equal(levelData.levels.length, 33);
+  assert.equal(finalLevel.id, 33);
+  assert.equal(finalLevel.name, "Starless Crucible");
+  assert.deepEqual(finalLevel.size, [89, 89]);
 });
 
-runTest("level 32 has a valid survivable route", () => {
+runTest("level 33 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -37,6 +38,26 @@ runTest("level 32 has a valid survivable route", () => {
   assert.equal(finalLevel.grid[0][0], "S");
   assert.equal(finalLevel.grid[finalLevel.size[1] - 1][finalLevel.size[0] - 1], "E");
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
+});
+
+runTest("level 33 creates meaningful HP pressure", () => {
+  const finalLevel = levelData.levels.at(-1);
+  const route = findSurvivableDirectPath(finalLevel.grid, levelData.startHp, levelData.maxHp);
+  assert.ok(route);
+  const stats = route.slice(1).reduce(
+    (total, step) => {
+      if (step.tile === "B") total.bombs += 1;
+      if (step.tile === "H") total.heals += 1;
+      total.lowestHp = Math.min(total.lowestHp, step.hp);
+      return total;
+    },
+    { bombs: 0, heals: 0, lowestHp: levelData.startHp },
+  );
+
+  assert.equal(route.length - 1, 4048);
+  assert.ok(stats.bombs > 1600);
+  assert.ok(stats.heals > 1300);
+  assert.equal(stats.lowestHp, 1);
 });
 
 runTest("every shipped level has a direct survivable route", () => {

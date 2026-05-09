@@ -334,7 +334,9 @@ function startLevel(levelId) {
     elapsedMs: 0,
     done: false,
     message: "Point A is open.",
+    history: [],
   };
+  recordGameState("start", TILE.start, false);
 
   els.subtitle.textContent = "Dungeon";
   els.lobbyButton.hidden = false;
@@ -431,7 +433,6 @@ function move(direction) {
   if (!delta) {
     return;
   }
-  startRunTimer();
   const next = {
     x: state.game.position.x + delta.x,
     y: state.game.position.y + delta.y,
@@ -440,12 +441,15 @@ function move(direction) {
 
   if (!tile || tile === TILE.wall) {
     state.game.message = "The wall holds.";
+    recordGameState(direction, tile || null, false);
     renderGame();
     return;
   }
 
+  startRunTimer();
   state.game.position = next;
   applyTile(tile);
+  recordGameState(direction, tile, true);
 
   if (state.game.hp <= 0) {
     failLevel();
@@ -483,11 +487,7 @@ function completeLevel() {
     const oldBest = profile.bestTimes[state.game.level.id];
     profile.bestTimes[state.game.level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
     profile.latestLevel = Math.max(profile.latestLevel, state.game.level.id);
-    profile.runs.push({
-      level: state.game.level.id,
-      timeMs: Math.round(elapsedMs),
-      completedAt: new Date().toISOString(),
-    });
+    recordRunEnd(profile, "cleared", elapsedMs);
     saveProfiles();
   }
 
@@ -502,10 +502,80 @@ function completeLevel() {
 }
 
 function failLevel() {
+  const elapsedMs = getCurrentElapsedMs();
+  const profile = getActiveProfile();
   state.game.done = true;
+  state.game.elapsedMs = elapsedMs;
   stopTimer();
-  openResult("Run ended", "HP reached 0.", "Back to Lobby", true);
+  if (profile) {
+    recordRunEnd(profile, "failed", elapsedMs);
+    saveProfiles();
+  }
+  openResult("Run ended", `HP reached 0 after ${formatTime(elapsedMs)}.`, "Back to Lobby", true);
   renderGame();
+}
+
+function recordRunEnd(profile, outcome, elapsedMs) {
+  if (!Array.isArray(profile.runs)) {
+    profile.runs = [];
+  }
+
+  const endedAt = new Date().toISOString();
+  const states = getEndedRunStates(outcome, elapsedMs);
+  const run = {
+    level: state.game.level.id,
+    outcome,
+    timeMs: Math.round(elapsedMs),
+    hp: state.game.hp,
+    position: {
+      x: state.game.position.x,
+      y: state.game.position.y,
+    },
+    states,
+    endedAt,
+  };
+
+  if (outcome === "cleared") {
+    run.completedAt = endedAt;
+  }
+
+  profile.runs.push(run);
+}
+
+function recordGameState(direction, tile, moved) {
+  if (!state.game || !Array.isArray(state.game.history)) {
+    return;
+  }
+
+  state.game.history.push({
+    step: state.game.history.length,
+    direction,
+    moved,
+    tile,
+    hp: state.game.hp,
+    position: {
+      x: state.game.position.x,
+      y: state.game.position.y,
+    },
+    message: state.game.message,
+    elapsedMs: Math.round(getCurrentElapsedMs()),
+  });
+}
+
+function getEndedRunStates(outcome, elapsedMs) {
+  const history = Array.isArray(state.game.history) ? state.game.history : [];
+  return history.map((entry, index) => {
+    const isFinal = index === history.length - 1;
+    return {
+      ...entry,
+      position: {
+        x: entry.position.x,
+        y: entry.position.y,
+      },
+      elapsedMs: isFinal ? Math.round(elapsedMs) : entry.elapsedMs,
+      outcome: isFinal ? outcome : undefined,
+    };
+  });
 }
 
 function openResult(title, text, nextLabel, failed) {
