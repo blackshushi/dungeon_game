@@ -198,6 +198,23 @@ function createHarness() {
   };
 }
 
+function summarizeRunStates(states) {
+  return states.map((state) => {
+    const summary = {
+      step: state.step,
+      direction: state.direction,
+      moved: state.moved,
+      tile: state.tile,
+      hp: state.hp,
+      position: state.position,
+    };
+    if (state.outcome) {
+      summary.outcome = state.outcome;
+    }
+    return summary;
+  });
+}
+
 async function runTest() {
   const root = path.resolve(__dirname, "..");
   const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
@@ -212,6 +229,9 @@ async function runTest() {
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
   assert.equal(harness.getIntervalStarts(), 0);
 
+  harness.moveButtons.left.click();
+  assert.equal(harness.getIntervalStarts(), 0);
+  assert.equal(harness.elements.eventLog.textContent, "The wall holds.");
   harness.moveButtons.right.click();
   assert.equal(harness.getIntervalStarts(), 1);
   harness.moveButtons.down.click();
@@ -225,6 +245,44 @@ async function runTest() {
   assert.equal(profiles.Dana.runs[0].outcome, "cleared");
   assert.equal(profiles.Dana.runs[0].hp, 3);
   assert.deepEqual(profiles.Dana.runs[0].position, { x: 1, y: 1 });
+  assert.deepEqual(
+    summarizeRunStates(profiles.Dana.runs[0].states),
+    [
+      {
+        step: 0,
+        direction: "start",
+        moved: false,
+        tile: "S",
+        hp: 3,
+        position: { x: 0, y: 0 },
+      },
+      {
+        step: 1,
+        direction: "left",
+        moved: false,
+        tile: null,
+        hp: 3,
+        position: { x: 0, y: 0 },
+      },
+      {
+        step: 2,
+        direction: "right",
+        moved: true,
+        tile: ".",
+        hp: 3,
+        position: { x: 1, y: 0 },
+      },
+      {
+        step: 3,
+        direction: "down",
+        moved: true,
+        tile: "E",
+        hp: 3,
+        position: { x: 1, y: 1 },
+        outcome: "cleared",
+      },
+    ],
+  );
 
   harness.elements.nextButton.click();
   harness.moveButtons.right.click();
@@ -239,6 +297,44 @@ async function runTest() {
   assert.equal(updatedProfiles.Dana.runs[1].hp, 0);
   assert.deepEqual(updatedProfiles.Dana.runs[1].position, { x: 3, y: 0 });
   assert.ok(updatedProfiles.Dana.runs[1].timeMs > 0);
+  assert.deepEqual(
+    summarizeRunStates(updatedProfiles.Dana.runs[1].states),
+    [
+      {
+        step: 0,
+        direction: "start",
+        moved: false,
+        tile: "S",
+        hp: 3,
+        position: { x: 0, y: 0 },
+      },
+      {
+        step: 1,
+        direction: "right",
+        moved: true,
+        tile: "B",
+        hp: 2,
+        position: { x: 1, y: 0 },
+      },
+      {
+        step: 2,
+        direction: "right",
+        moved: true,
+        tile: "B",
+        hp: 1,
+        position: { x: 2, y: 0 },
+      },
+      {
+        step: 3,
+        direction: "right",
+        moved: true,
+        tile: "B",
+        hp: 0,
+        position: { x: 3, y: 0 },
+        outcome: "failed",
+      },
+    ],
+  );
 }
 
 runTest()
