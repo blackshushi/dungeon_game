@@ -21,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 37 as the final catalog entry", () => {
+runTest("ships level 38 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 37);
-  assert.equal(finalLevel.id, 37);
-  assert.equal(finalLevel.name, "Emberlace Vault");
-  assert.deepEqual(finalLevel.size, [105, 105]);
+  assert.equal(levelData.levels.length, 38);
+  assert.equal(finalLevel.id, 38);
+  assert.equal(finalLevel.name, "Sunless Reliquary");
+  assert.deepEqual(finalLevel.size, [109, 109]);
 });
 
-runTest("level 37 has a valid survivable route", () => {
+runTest("level 38 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -40,7 +40,7 @@ runTest("level 37 has a valid survivable route", () => {
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
 });
 
-runTest("level 37 creates meaningful HP pressure", () => {
+runTest("level 38 creates meaningful HP pressure", () => {
   const finalLevel = levelData.levels.at(-1);
   const route = findSurvivableDirectPath(finalLevel.grid, levelData.startHp, levelData.maxHp);
   assert.ok(route);
@@ -54,9 +54,9 @@ runTest("level 37 creates meaningful HP pressure", () => {
     { bombs: 0, heals: 0, lowestHp: levelData.startHp },
   );
 
-  assert.equal(route.length - 1, 5616);
-  assert.equal(stats.bombs, 2496);
-  assert.equal(stats.heals, 2496);
+  assert.equal(route.length - 1, 6048);
+  assert.equal(stats.bombs, 2268);
+  assert.equal(stats.heals, 2268);
   assert.equal(stats.lowestHp, 1);
 });
 
