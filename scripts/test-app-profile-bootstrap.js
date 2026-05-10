@@ -268,6 +268,8 @@ async function runTest() {
   assert.match(repairedHarness.elements.leaderboardBody.children[0].innerHTML, /6 moves/);
   assert.match(repairedHarness.elements.levelList.children[0].innerHTML, /2\.5s \/ 12 moves/);
   assert.match(repairedHarness.elements.levelList.children[1].innerHTML, /1\.0s \/ 4 moves/);
+  repairedHarness.elements.levelList.children[0].click();
+  assert.equal(repairedHarness.elements.bestTimeValue.textContent, "2.5s / 12 moves");
   const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
   assert.equal(typeof repairedProfile.createdAt, "string");
   delete repairedProfile.createdAt;
