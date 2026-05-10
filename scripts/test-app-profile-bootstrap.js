@@ -72,7 +72,7 @@ class FakeElement {
   }
 }
 
-function createHarness() {
+function createHarness(levelData = null) {
   const ids = [
     "subtitle",
     "lobbyButton",
@@ -135,7 +135,7 @@ function createHarness() {
   let intervalStarts = 0;
   let intervalClears = 0;
   const window = {
-    DUNGEON_LEVEL_DATA: {
+    DUNGEON_LEVEL_DATA: levelData || {
       levels: [
         {
           id: 1,
@@ -215,21 +215,123 @@ function summarizeRunStates(states) {
   });
 }
 
-async function runTest() {
-  const root = path.resolve(__dirname, "..");
-  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
-  const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
-  const harness = createHarness();
-  harness.elements.usernameInput.value = "Dana";
+async function bootApp(harness, summarySource, source) {
   harness.context.globalThis = harness.context;
   vm.runInNewContext(summarySource, harness.context, { filename: "level-summary.js" });
   vm.runInNewContext(source, harness.context, { filename: "app.js" });
   await Promise.resolve();
+}
+
+async function runTest() {
+  const root = path.resolve(__dirname, "..");
+  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
+  const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
+
+  const corruptedHarness = createHarness();
+  corruptedHarness.store.set(STORAGE_KEY, JSON.stringify(42));
+  corruptedHarness.store.set(ACTIVE_NAME_KEY, "Riley");
+  await bootApp(corruptedHarness, summarySource, source);
+  assert.equal(corruptedHarness.elements.usernameInput.value, "Riley");
+  assert.equal(corruptedHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(corruptedHarness.elements.latestLevelValue.textContent, "0/2");
+  const recoveredProfile = JSON.parse(corruptedHarness.store.get(STORAGE_KEY)).Riley;
+  assert.equal(recoveredProfile.latestLevel, 0);
+
+  const repairedHarness = createHarness();
+  repairedHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Bad: "skip",
+    Mira: {
+      name: 123,
+      latestLevel: "99",
+      bestTimes: {
+        1: "2500",
+        2: "1000",
+        3: "50",
+        two: 3000,
+        4: 0,
+      },
+      runs: "bad",
+    },
+  }));
+  repairedHarness.store.set(ACTIVE_NAME_KEY, "Mira");
+  await bootApp(repairedHarness, summarySource, source);
+  assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
+  assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
+  assert.equal(typeof repairedProfile.createdAt, "string");
+  delete repairedProfile.createdAt;
+  assert.deepEqual(repairedProfile, {
+    name: "Mira",
+    latestLevel: 2,
+    bestTimes: {
+      1: 2500,
+      2: 1000,
+    },
+    runs: [],
+  });
+
+  const normalizedActiveHarness = createHarness();
+  normalizedActiveHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Mira: {
+      name: "Mira",
+      latestLevel: 1,
+      bestTimes: {
+        1: 1500,
+      },
+      runs: [],
+      createdAt: "2026-05-10T00:00:00.000Z",
+    },
+  }));
+  normalizedActiveHarness.store.set(ACTIVE_NAME_KEY, "  Mira   ");
+  await bootApp(normalizedActiveHarness, summarySource, source);
+  assert.equal(normalizedActiveHarness.elements.usernameInput.value, "Mira");
+  assert.equal(normalizedActiveHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(normalizedActiveHarness.store.get(ACTIVE_NAME_KEY), "Mira");
+  const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
+  assert.equal(normalizedProfiles["  Mira   "], undefined);
+  assert.equal(normalizedProfiles.Mira.latestLevel, 1);
+
+  const customHealthHarness = createHarness({
+    startHp: 2,
+    maxHp: 4,
+    levels: [
+      {
+        id: 1,
+        name: "Recovery Start",
+        size: [3, 1],
+        grid: [
+          "SHE",
+        ],
+      },
+      {
+        id: 2,
+        name: "Short Fuse",
+        size: [4, 1],
+        grid: [
+          "SBBE",
+        ],
+      },
+    ],
+  });
+  customHealthHarness.elements.usernameInput.value = "Kaya";
+  await bootApp(customHealthHarness, summarySource, source);
+  assert.match(customHealthHarness.elements.levelList.children[1].innerHTML, /route unavailable/i);
+  customHealthHarness.elements.levelList.children[0].click();
+  assert.equal(customHealthHarness.elements.hpValue.textContent, "2/4");
+  customHealthHarness.moveButtons.right.click();
+  assert.equal(customHealthHarness.elements.hpValue.textContent, "3/4");
+  customHealthHarness.moveButtons.right.click();
+  assert.match(customHealthHarness.elements.resultText.textContent, /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\.$/);
+
+  const harness = createHarness();
+  harness.elements.usernameInput.value = "Dana";
+  await bootApp(harness, summarySource, source);
 
   assert.equal(harness.elements.levelList.children.length, 2);
   assert.match(harness.elements.levelList.children[0].innerHTML, /2-move route/);
   assert.match(harness.elements.levelList.children[0].innerHTML, /Calm route: 0 bombs, 0 healing pots/);
-  assert.match(harness.elements.levelList.children[1].innerHTML, /4-move route/);
+  assert.match(harness.elements.levelList.children[1].innerHTML, /route unavailable/i);
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");

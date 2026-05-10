@@ -66,6 +66,40 @@ runTest("estimates shortest playable route length for lobby intel", () => {
   }), 4);
 });
 
+runTest("uses supplied health rules when estimating route survival", () => {
+  const level = {
+    grid: [
+      "SBBE",
+    ],
+  };
+
+  assert.equal(getShortestRouteMoves(level, { startHp: 4, maxHp: 4 }), 3);
+  assert.equal(getShortestRouteMoves(level, { startHp: 2, maxHp: 4 }), null);
+});
+
+runTest("reports the shortest survivable route when the shortest path is lethal", () => {
+  const summary = getLevelSummary({
+    size: [5, 3],
+    grid: [
+      "SBBBE",
+      "H###.",
+      "H....",
+    ],
+  });
+
+  assert.equal(summary.routeMoves, 6);
+  assert.equal(summary.routeLabel, "6-move route");
+  assert.equal(summary.meta, "5 x 3 grid - 6-move route - 3 bombs - 2 healing pots");
+});
+
+runTest("marks route length unavailable when every route runs out of HP", () => {
+  assert.equal(getShortestRouteMoves({
+    grid: [
+      "SBBBE",
+    ],
+  }), null);
+});
+
 runTest("marks route length unavailable when the exit is isolated", () => {
   const summary = getLevelSummary({
     size: [3, 3],

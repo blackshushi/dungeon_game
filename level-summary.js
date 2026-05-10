@@ -1,4 +1,6 @@
 (function attachLevelSummaryApi(globalScope) {
+  const DEFAULT_START_HP = 3;
+  const DEFAULT_MAX_HP = 5;
   const WALKABLE_TILES = new Set(["S", "E", ".", "B", "H"]);
   const DELTAS = [
     { x: 0, y: -1 },
@@ -63,7 +65,7 @@
     return counts;
   }
 
-  function getShortestRouteMoves(level) {
+  function getShortestRouteMoves(level, options = {}) {
     const grid = Array.isArray(level && level.grid) ? level.grid : [];
     if (!grid.length || typeof grid[0] !== "string" || !grid[0].length) {
       return null;
@@ -77,8 +79,9 @@
 
     const width = grid[0].length;
     const height = grid.length;
-    const queue = [{ ...start, distance: 0 }];
-    const seen = new Set([positionKey(start.x, start.y)]);
+    const { startHp, maxHp } = getRouteHealthConfig(options);
+    const queue = [{ ...start, hp: startHp, distance: 0 }];
+    const seen = new Set([stateKey(start.x, start.y, startHp)]);
 
     for (let index = 0; index < queue.length; index += 1) {
       const current = queue[index];
@@ -101,12 +104,17 @@
           continue;
         }
 
-        const key = positionKey(next.x, next.y);
+        const nextHp = applyTileHealth(current.hp, row[next.x], maxHp);
+        if (nextHp <= 0) {
+          continue;
+        }
+
+        const key = stateKey(next.x, next.y, nextHp);
         if (seen.has(key)) {
           continue;
         }
         seen.add(key);
-        queue.push(next);
+        queue.push({ ...next, hp: nextHp });
       }
     }
 
@@ -128,6 +136,30 @@
 
   function positionKey(x, y) {
     return `${x},${y}`;
+  }
+
+  function stateKey(x, y, hp) {
+    return `${positionKey(x, y)},${hp}`;
+  }
+
+  function getRouteHealthConfig(options) {
+    const startHp = toPositiveInteger(options && options.startHp, DEFAULT_START_HP);
+    const maxHp = Math.max(startHp, toPositiveInteger(options && options.maxHp, DEFAULT_MAX_HP));
+    return { startHp, maxHp };
+  }
+
+  function toPositiveInteger(value, fallback) {
+    return Number.isInteger(value) && value > 0 ? value : fallback;
+  }
+
+  function applyTileHealth(hp, tile, maxHp) {
+    if (tile === "B") {
+      return hp - 1;
+    }
+    if (tile === "H") {
+      return Math.min(maxHp, hp + 1);
+    }
+    return hp;
   }
 
   function getPressureLabel(counts) {
@@ -154,11 +186,11 @@
     return Number.isInteger(moves) && moves >= 0 ? `${moves}-move route` : "route unavailable";
   }
 
-  function getLevelSummary(level) {
+  function getLevelSummary(level, options = {}) {
     const size = getLevelSize(level);
     const counts = countLevelTiles(level);
     const label = getPressureLabel(counts);
-    const routeMoves = getShortestRouteMoves(level);
+    const routeMoves = getShortestRouteMoves(level, options);
     const routeLabel = formatRouteMoves(routeMoves);
     const bombText = formatCount(counts.bombs, "bomb", "bombs");
     const healText = formatCount(counts.heals, "healing pot", "healing pots");

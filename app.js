@@ -1,6 +1,7 @@
 const STORAGE_KEY = "dungeon_game_profiles_v1";
-const START_HP = 3;
-const MAX_HP = 5;
+const ACTIVE_NAME_KEY = "dungeon_game_active_name";
+const DEFAULT_START_HP = 3;
+const DEFAULT_MAX_HP = 5;
 const TILE = {
   start: "S",
   exit: "E",
@@ -57,6 +58,8 @@ const levelSummary = window.DungeonLevelSummary || globalThis.DungeonLevelSummar
 
 const state = {
   levels: [],
+  startHp: DEFAULT_START_HP,
+  maxHp: DEFAULT_MAX_HP,
   profiles: {},
   activeName: "",
   game: null,
@@ -93,19 +96,30 @@ const els = {
 };
 
 async function boot() {
-  loadProfiles();
-  state.activeName = localStorage.getItem("dungeon_game_active_name") || "";
+  let profilesChanged = loadProfiles();
+  const storedActiveName = localStorage.getItem(ACTIVE_NAME_KEY) || "";
+  state.activeName = storedActiveName ? normalizeName(storedActiveName) : "";
+  if (storedActiveName && state.activeName !== storedActiveName) {
+    localStorage.setItem(ACTIVE_NAME_KEY, state.activeName);
+  }
   if (state.activeName) {
+    const hadProfile = Boolean(state.profiles[state.activeName]);
     ensureProfile(state.activeName);
+    profilesChanged = profilesChanged || !hadProfile;
     els.usernameInput.value = state.activeName;
   }
 
   try {
     const data = window.DUNGEON_LEVEL_DATA || await fetchLevelData();
-    state.levels = data.levels;
+    applyLevelCatalog(data);
+    profilesChanged = clampProfilesToLevelCatalog() || profilesChanged;
   } catch (error) {
     els.eventLog.textContent = "Level data could not be loaded.";
     console.error(error);
+  }
+
+  if (profilesChanged) {
+    saveProfiles();
   }
 
   bindEvents();
@@ -118,6 +132,12 @@ async function fetchLevelData() {
     throw new Error(`Level file returned ${response.status}`);
   }
   return response.json();
+}
+
+function applyLevelCatalog(data) {
+  state.levels = Array.isArray(data?.levels) ? data.levels : [];
+  state.startHp = toPositiveInteger(data?.startHp, DEFAULT_START_HP);
+  state.maxHp = Math.max(state.startHp, toPositiveInteger(data?.maxHp, DEFAULT_MAX_HP));
 }
 
 function bindEvents() {
@@ -182,7 +202,7 @@ function bindEvents() {
 function selectProfile(rawName) {
   const name = normalizeName(rawName);
   state.activeName = name;
-  localStorage.setItem("dungeon_game_active_name", name);
+  localStorage.setItem(ACTIVE_NAME_KEY, name);
   ensureProfile(name);
   saveProfiles();
   renderLobby();
@@ -194,11 +214,103 @@ function normalizeName(name) {
 }
 
 function loadProfiles() {
+  const rawProfiles = localStorage.getItem(STORAGE_KEY);
+  if (rawProfiles === null) {
+    state.profiles = {};
+    return false;
+  }
+
   try {
-    state.profiles = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    const parsedProfiles = JSON.parse(rawProfiles);
+    state.profiles = sanitizeProfiles(parsedProfiles);
+    return JSON.stringify(state.profiles) !== JSON.stringify(parsedProfiles);
   } catch {
     state.profiles = {};
+    return true;
   }
+}
+
+function clampProfilesToLevelCatalog() {
+  const totalLevels = state.levels.length;
+  if (!totalLevels) {
+    return false;
+  }
+
+  let changed = false;
+  for (const profile of Object.values(state.profiles)) {
+    const latestLevel = Math.min(toNonNegativeInteger(profile.latestLevel), totalLevels);
+    if (profile.latestLevel !== latestLevel) {
+      profile.latestLevel = latestLevel;
+      changed = true;
+    }
+
+    const bestTimes = Object.entries(profile.bestTimes || {}).reduce((validTimes, [levelId, time]) => {
+      const level = Number(levelId);
+      if (Number.isInteger(level) && level >= 1 && level <= totalLevels) {
+        validTimes[String(level)] = time;
+      }
+      return validTimes;
+    }, {});
+    if (JSON.stringify(bestTimes) !== JSON.stringify(profile.bestTimes || {})) {
+      profile.bestTimes = bestTimes;
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+function sanitizeProfiles(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((profiles, [fallbackName, profile]) => {
+    if (!isRecord(profile)) {
+      return profiles;
+    }
+
+    const name = normalizeName(typeof profile.name === "string" ? profile.name : fallbackName);
+    profiles[name] = {
+      ...profile,
+      name,
+      latestLevel: toNonNegativeInteger(profile.latestLevel),
+      bestTimes: sanitizeBestTimes(profile.bestTimes),
+      runs: Array.isArray(profile.runs) ? profile.runs : [],
+      createdAt: typeof profile.createdAt === "string" && profile.createdAt
+        ? profile.createdAt
+        : new Date().toISOString(),
+    };
+    return profiles;
+  }, {});
+}
+
+function sanitizeBestTimes(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((bestTimes, [levelId, time]) => {
+    const level = Number(levelId);
+    const timeMs = Number(time);
+    if (Number.isInteger(level) && level > 0 && Number.isFinite(timeMs) && timeMs > 0) {
+      bestTimes[String(level)] = timeMs;
+    }
+    return bestTimes;
+  }, {});
+}
+
+function toNonNegativeInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : 0;
+}
+
+function toPositiveInteger(value, fallback) {
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function saveProfiles() {
@@ -299,7 +411,7 @@ function renderLevelList(profile) {
 
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
-    const summary = levelSummary.getLevelSummary(level);
+    const summary = getCatalogLevelSummary(level);
     const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
     const card = document.createElement("button");
     card.type = "button";
@@ -346,7 +458,7 @@ function startLevel(levelId) {
   state.game = {
     level,
     position: start,
-    hp: START_HP,
+    hp: state.startHp,
     startedAt: null,
     elapsedMs: 0,
     done: false,
@@ -371,10 +483,10 @@ function renderGame() {
 
   els.playerNameValue.textContent = state.activeName || "Explorer";
   els.levelValue.textContent = `${level.id}/${state.levels.length}`;
-  els.hpValue.textContent = `${hp}/${MAX_HP}`;
+  els.hpValue.textContent = `${hp}/${state.maxHp}`;
   els.bestTimeValue.textContent = profile?.bestTimes?.[level.id] ? formatTime(profile.bestTimes[level.id]) : "-";
   els.levelName.textContent = level.name;
-  els.levelMeta.textContent = levelSummary.getLevelSummary(level).meta;
+  els.levelMeta.textContent = getCatalogLevelSummary(level).meta;
   els.eventLog.textContent = state.game.message;
 
   renderTimer();
@@ -486,7 +598,7 @@ function applyTile(tile) {
     state.game.hp -= 1;
     state.game.message = "Bomb hit. HP -1.";
   } else if (tile === TILE.heal) {
-    state.game.hp = Math.min(MAX_HP, state.game.hp + 1);
+    state.game.hp = Math.min(state.maxHp, state.game.hp + 1);
     state.game.message = "Healing pot. HP +1.";
   } else {
     state.game.message = "Step.";
@@ -568,7 +680,14 @@ function getRunMoveCount() {
 function formatRunResult(elapsedMs) {
   const moves = getRunMoveCount();
   const moveLabel = moves === 1 ? "move" : "moves";
-  return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${MAX_HP} HP`;
+  return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${state.maxHp} HP`;
+}
+
+function getCatalogLevelSummary(level) {
+  return levelSummary.getLevelSummary(level, {
+    startHp: state.startHp,
+    maxHp: state.maxHp,
+  });
 }
 
 function recordGameState(direction, tile, moved) {
