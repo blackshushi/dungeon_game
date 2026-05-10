@@ -232,7 +232,7 @@ input:focus {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 320px;
+  min-width: 380px;
 }
 
 th,
