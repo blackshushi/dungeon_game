@@ -1,5 +1,10 @@
 const assert = require("node:assert/strict");
-const { countLevelTiles, getLevelSummary, getShortestRouteMoves } = require("../level-summary");
+const {
+  countLevelTiles,
+  getLevelSummary,
+  getShortestRouteMoves,
+  getShortestRouteStats,
+} = require("../level-summary");
 
 let passed = 0;
 let failed = 0;
@@ -51,9 +56,11 @@ runTest("formats pressure summaries with pluralized tile names", () => {
   assert.equal(summary.height, 3);
   assert.equal(summary.label, "High pressure");
   assert.equal(summary.routeMoves, 4);
+  assert.equal(summary.routeLowestHp, 2);
   assert.equal(summary.routeLabel, "4-move route");
-  assert.equal(summary.meta, "3 x 3 grid - 4-move route - 2 bombs - 1 healing pot");
-  assert.equal(summary.pressure, "High pressure: 2 bombs, 1 healing pot");
+  assert.equal(summary.routeSurvival, "lowest HP 2/5");
+  assert.equal(summary.meta, "3 x 3 grid - 4-move route - lowest HP 2/5 - 2 bombs - 1 healing pot");
+  assert.equal(summary.pressure, "High pressure: 2 bombs, 1 healing pot, lowest HP 2/5");
 });
 
 runTest("estimates shortest playable route length for lobby intel", () => {
@@ -77,6 +84,21 @@ runTest("uses supplied health rules when estimating route survival", () => {
   assert.equal(getShortestRouteMoves(level, { startHp: 2, maxHp: 4 }), null);
 });
 
+runTest("reports the strongest HP floor among shortest routes", () => {
+  const stats = getShortestRouteStats({
+    grid: [
+      "S.B",
+      ".H.",
+      "..E",
+    ],
+  });
+
+  assert.deepEqual(stats, {
+    moves: 4,
+    lowestHp: 3,
+  });
+});
+
 runTest("reports the shortest survivable route when the shortest path is lethal", () => {
   const summary = getLevelSummary({
     size: [5, 3],
@@ -89,7 +111,9 @@ runTest("reports the shortest survivable route when the shortest path is lethal"
 
   assert.equal(summary.routeMoves, 6);
   assert.equal(summary.routeLabel, "6-move route");
-  assert.equal(summary.meta, "5 x 3 grid - 6-move route - 3 bombs - 2 healing pots");
+  assert.equal(summary.routeLowestHp, 1);
+  assert.equal(summary.routeSurvival, "lowest HP 1/5");
+  assert.equal(summary.meta, "5 x 3 grid - 6-move route - lowest HP 1/5 - 3 bombs - 2 healing pots");
 });
 
 runTest("marks route length unavailable when every route runs out of HP", () => {
@@ -125,7 +149,7 @@ runTest("identifies calm routes without hazards or heals", () => {
   });
 
   assert.equal(summary.label, "Calm route");
-  assert.equal(summary.pressure, "Calm route: 0 bombs, 0 healing pots");
+  assert.equal(summary.pressure, "Calm route: 0 bombs, 0 healing pots, lowest HP 3/5");
 });
 
 runTest("keeps near-even hazard and healing counts balanced", () => {
@@ -138,7 +162,7 @@ runTest("keeps near-even hazard and healing counts balanced", () => {
   });
 
   assert.equal(summary.label, "Balanced pressure");
-  assert.equal(summary.pressure, "Balanced pressure: 3 bombs, 4 healing pots");
+  assert.equal(summary.pressure, "Balanced pressure: 3 bombs, 4 healing pots, lowest HP 3/5");
 });
 
 console.log(`\n${passed} passed, ${failed} failed.`);

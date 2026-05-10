@@ -386,7 +386,10 @@ async function runTest() {
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
-  assert.equal(harness.elements.levelMeta.textContent, "2 x 2 grid - 2-move route - 0 bombs - 0 healing pots");
+  assert.equal(
+    harness.elements.levelMeta.textContent,
+    "2 x 2 grid - 2-move route - lowest HP 3/5 - 0 bombs - 0 healing pots",
+  );
   assert.equal(harness.getIntervalStarts(), 0);
 
   harness.moveButtons.left.click();
