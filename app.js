@@ -93,19 +93,26 @@ const els = {
 };
 
 async function boot() {
-  loadProfiles();
+  let profilesChanged = loadProfiles();
   state.activeName = localStorage.getItem("dungeon_game_active_name") || "";
   if (state.activeName) {
+    const hadProfile = Boolean(state.profiles[state.activeName]);
     ensureProfile(state.activeName);
+    profilesChanged = profilesChanged || !hadProfile;
     els.usernameInput.value = state.activeName;
   }
 
   try {
     const data = window.DUNGEON_LEVEL_DATA || await fetchLevelData();
     state.levels = data.levels;
+    profilesChanged = clampProfilesToLevelCatalog() || profilesChanged;
   } catch (error) {
     els.eventLog.textContent = "Level data could not be loaded.";
     console.error(error);
+  }
+
+  if (profilesChanged) {
+    saveProfiles();
   }
 
   bindEvents();
@@ -194,11 +201,50 @@ function normalizeName(name) {
 }
 
 function loadProfiles() {
+  const rawProfiles = localStorage.getItem(STORAGE_KEY);
+  if (rawProfiles === null) {
+    state.profiles = {};
+    return false;
+  }
+
   try {
-    state.profiles = sanitizeProfiles(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+    const parsedProfiles = JSON.parse(rawProfiles);
+    state.profiles = sanitizeProfiles(parsedProfiles);
+    return JSON.stringify(state.profiles) !== JSON.stringify(parsedProfiles);
   } catch {
     state.profiles = {};
+    return true;
   }
+}
+
+function clampProfilesToLevelCatalog() {
+  const totalLevels = state.levels.length;
+  if (!totalLevels) {
+    return false;
+  }
+
+  let changed = false;
+  for (const profile of Object.values(state.profiles)) {
+    const latestLevel = Math.min(toNonNegativeInteger(profile.latestLevel), totalLevels);
+    if (profile.latestLevel !== latestLevel) {
+      profile.latestLevel = latestLevel;
+      changed = true;
+    }
+
+    const bestTimes = Object.entries(profile.bestTimes || {}).reduce((validTimes, [levelId, time]) => {
+      const level = Number(levelId);
+      if (Number.isInteger(level) && level >= 1 && level <= totalLevels) {
+        validTimes[String(level)] = time;
+      }
+      return validTimes;
+    }, {});
+    if (JSON.stringify(bestTimes) !== JSON.stringify(profile.bestTimes || {})) {
+      profile.bestTimes = bestTimes;
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 function sanitizeProfiles(value) {
