@@ -215,16 +215,49 @@ function summarizeRunStates(states) {
   });
 }
 
-async function runTest() {
-  const root = path.resolve(__dirname, "..");
-  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
-  const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
-  const harness = createHarness();
-  harness.elements.usernameInput.value = "Dana";
+async function bootApp(harness, summarySource, source) {
   harness.context.globalThis = harness.context;
   vm.runInNewContext(summarySource, harness.context, { filename: "level-summary.js" });
   vm.runInNewContext(source, harness.context, { filename: "app.js" });
   await Promise.resolve();
+}
+
+async function runTest() {
+  const root = path.resolve(__dirname, "..");
+  const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
+  const source = fs.readFileSync(path.join(root, "app.js"), "utf8");
+
+  const corruptedHarness = createHarness();
+  corruptedHarness.store.set(STORAGE_KEY, JSON.stringify(42));
+  corruptedHarness.store.set(ACTIVE_NAME_KEY, "Riley");
+  await bootApp(corruptedHarness, summarySource, source);
+  assert.equal(corruptedHarness.elements.usernameInput.value, "Riley");
+  assert.equal(corruptedHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(corruptedHarness.elements.latestLevelValue.textContent, "0/2");
+
+  const repairedHarness = createHarness();
+  repairedHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Bad: "skip",
+    Mira: {
+      name: 123,
+      latestLevel: "1",
+      bestTimes: {
+        1: "2500",
+        two: 3000,
+        2: 0,
+      },
+      runs: "bad",
+    },
+  }));
+  repairedHarness.store.set(ACTIVE_NAME_KEY, "Mira");
+  await bootApp(repairedHarness, summarySource, source);
+  assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(repairedHarness.elements.latestLevelValue.textContent, "1/2");
+  assert.equal(repairedHarness.elements.totalTimeValue.textContent, "2.5s");
+
+  const harness = createHarness();
+  harness.elements.usernameInput.value = "Dana";
+  await bootApp(harness, summarySource, source);
 
   assert.equal(harness.elements.levelList.children.length, 2);
   assert.match(harness.elements.levelList.children[0].innerHTML, /2-move route/);

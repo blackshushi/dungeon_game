@@ -195,10 +195,59 @@ function normalizeName(name) {
 
 function loadProfiles() {
   try {
-    state.profiles = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    state.profiles = sanitizeProfiles(JSON.parse(localStorage.getItem(STORAGE_KEY)));
   } catch {
     state.profiles = {};
   }
+}
+
+function sanitizeProfiles(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((profiles, [fallbackName, profile]) => {
+    if (!isRecord(profile)) {
+      return profiles;
+    }
+
+    const name = normalizeName(typeof profile.name === "string" ? profile.name : fallbackName);
+    profiles[name] = {
+      ...profile,
+      name,
+      latestLevel: toNonNegativeInteger(profile.latestLevel),
+      bestTimes: sanitizeBestTimes(profile.bestTimes),
+      runs: Array.isArray(profile.runs) ? profile.runs : [],
+      createdAt: typeof profile.createdAt === "string" && profile.createdAt
+        ? profile.createdAt
+        : new Date().toISOString(),
+    };
+    return profiles;
+  }, {});
+}
+
+function sanitizeBestTimes(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((bestTimes, [levelId, time]) => {
+    const level = Number(levelId);
+    const timeMs = Number(time);
+    if (Number.isInteger(level) && level > 0 && Number.isFinite(timeMs) && timeMs > 0) {
+      bestTimes[String(level)] = timeMs;
+    }
+    return bestTimes;
+  }, {});
+}
+
+function toNonNegativeInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : 0;
+}
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function saveProfiles() {
