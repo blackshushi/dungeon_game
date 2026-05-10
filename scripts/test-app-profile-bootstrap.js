@@ -319,6 +319,12 @@ async function runTest() {
       bestMoves: { 1: 2 },
       runs: [],
     },
+    LegacyFeet: {
+      name: "LegacyFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      runs: [],
+    },
     WanderingFeet: {
       name: "WanderingFeet",
       latestLevel: 1,
@@ -329,11 +335,13 @@ async function runTest() {
   }));
   tieBreakHarness.store.set(ACTIVE_NAME_KEY, "WanderingFeet");
   await bootApp(tieBreakHarness, summarySource, source);
-  assert.equal(tieBreakHarness.elements.rankValue.textContent, "#2 of 2");
+  assert.equal(tieBreakHarness.elements.rankValue.textContent, "#2 of 3");
   assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /FastFeet/);
   assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /2 moves/);
   assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /WanderingFeet/);
   assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /4 moves/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[2].innerHTML, /LegacyFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[2].innerHTML, /<td>-<\/td>/);
 
   const customHealthHarness = createHarness({
     startHp: 2,
