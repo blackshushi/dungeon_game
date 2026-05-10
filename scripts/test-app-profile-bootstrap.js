@@ -250,6 +250,13 @@ async function runTest() {
         two: 3000,
         4: 0,
       },
+      bestMoves: {
+        1: "12",
+        2: 4,
+        3: 2,
+        two: 6,
+        4: 0,
+      },
       runs: "bad",
     },
   }));
@@ -258,6 +265,8 @@ async function runTest() {
   assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
   assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  assert.match(repairedHarness.elements.levelList.children[0].innerHTML, /2\.5s \/ 12 moves/);
+  assert.match(repairedHarness.elements.levelList.children[1].innerHTML, /1\.0s \/ 4 moves/);
   const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
   assert.equal(typeof repairedProfile.createdAt, "string");
   delete repairedProfile.createdAt;
@@ -267,6 +276,10 @@ async function runTest() {
     bestTimes: {
       1: 2500,
       2: 1000,
+    },
+    bestMoves: {
+      1: 12,
+      2: 4,
     },
     runs: [],
   });
@@ -279,7 +292,10 @@ async function runTest() {
       bestTimes: {
         1: 1500,
       },
-      runs: [],
+      runs: [
+        { level: 1, outcome: "cleared", moves: 5 },
+        { level: 1, outcome: "failed", moves: 2 },
+      ],
       createdAt: "2026-05-10T00:00:00.000Z",
     },
   }));
@@ -291,6 +307,7 @@ async function runTest() {
   const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
   assert.equal(normalizedProfiles["  Mira   "], undefined);
   assert.equal(normalizedProfiles.Mira.latestLevel, 1);
+  assert.equal(normalizedProfiles.Mira.bestMoves["1"], 5);
 
   const customHealthHarness = createHarness({
     startHp: 2,
@@ -351,6 +368,7 @@ async function runTest() {
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(profiles.Dana.latestLevel, 1);
   assert.ok(profiles.Dana.bestTimes["1"] > 0);
+  assert.equal(profiles.Dana.bestMoves["1"], 2);
   assert.equal(profiles.Dana.runs.length, 1);
   assert.equal(profiles.Dana.runs[0].outcome, "cleared");
   assert.equal(profiles.Dana.runs[0].moves, 2);
@@ -404,6 +422,8 @@ async function runTest() {
   const updatedProfiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(updatedProfiles.Dana.latestLevel, 1);
   assert.equal(updatedProfiles.Dana.bestTimes["2"], undefined);
+  assert.equal(updatedProfiles.Dana.bestMoves["1"], 2);
+  assert.equal(updatedProfiles.Dana.bestMoves["2"], undefined);
   assert.equal(updatedProfiles.Dana.runs.length, 2);
   assert.equal(updatedProfiles.Dana.runs[1].outcome, "failed");
   assert.equal(updatedProfiles.Dana.runs[1].moves, 3);

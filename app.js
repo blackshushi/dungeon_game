@@ -255,6 +255,18 @@ function clampProfilesToLevelCatalog() {
       profile.bestTimes = bestTimes;
       changed = true;
     }
+
+    const bestMoves = Object.entries(profile.bestMoves || {}).reduce((validMoves, [levelId, moves]) => {
+      const level = Number(levelId);
+      if (Number.isInteger(level) && level >= 1 && level <= totalLevels) {
+        validMoves[String(level)] = moves;
+      }
+      return validMoves;
+    }, {});
+    if (JSON.stringify(bestMoves) !== JSON.stringify(profile.bestMoves || {})) {
+      profile.bestMoves = bestMoves;
+      changed = true;
+    }
   }
 
   return changed;
@@ -271,12 +283,15 @@ function sanitizeProfiles(value) {
     }
 
     const name = normalizeName(typeof profile.name === "string" ? profile.name : fallbackName);
+    const runs = Array.isArray(profile.runs) ? profile.runs : [];
+    const bestMoves = backfillBestMovesFromRuns(sanitizeBestMoves(profile.bestMoves), runs);
     profiles[name] = {
       ...profile,
       name,
       latestLevel: toNonNegativeInteger(profile.latestLevel),
       bestTimes: sanitizeBestTimes(profile.bestTimes),
-      runs: Array.isArray(profile.runs) ? profile.runs : [],
+      bestMoves,
+      runs,
       createdAt: typeof profile.createdAt === "string" && profile.createdAt
         ? profile.createdAt
         : new Date().toISOString(),
@@ -297,6 +312,42 @@ function sanitizeBestTimes(value) {
       bestTimes[String(level)] = timeMs;
     }
     return bestTimes;
+  }, {});
+}
+
+function backfillBestMovesFromRuns(bestMoves, runs) {
+  const nextBestMoves = { ...bestMoves };
+
+  for (const run of runs) {
+    if (!isRecord(run) || run.outcome !== "cleared") {
+      continue;
+    }
+
+    const level = Number(run.level);
+    const moves = Number(run.moves);
+    if (!Number.isInteger(level) || level <= 0 || !Number.isInteger(moves) || moves <= 0) {
+      continue;
+    }
+
+    const key = String(level);
+    nextBestMoves[key] = nextBestMoves[key] ? Math.min(nextBestMoves[key], moves) : moves;
+  }
+
+  return nextBestMoves;
+}
+
+function sanitizeBestMoves(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((bestMoves, [levelId, moves]) => {
+    const level = Number(levelId);
+    const moveCount = Number(moves);
+    if (Number.isInteger(level) && level > 0 && Number.isInteger(moveCount) && moveCount > 0) {
+      bestMoves[String(level)] = moveCount;
+    }
+    return bestMoves;
   }, {});
 }
 
@@ -323,6 +374,7 @@ function ensureProfile(name) {
       name,
       latestLevel: 0,
       bestTimes: {},
+      bestMoves: {},
       runs: [],
       createdAt: new Date().toISOString(),
     };
@@ -411,6 +463,10 @@ function renderLevelList(profile) {
 
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
+    const bestMoves = profile?.bestMoves?.[level.id];
+    const progressLabel = best
+      ? [formatTime(best), formatMoveCount(bestMoves)].filter(Boolean).join(" / ")
+      : `${level.size[0]} x ${level.size[1]}`;
     const summary = getCatalogLevelSummary(level);
     const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
     const card = document.createElement("button");
@@ -425,7 +481,7 @@ function renderLevelList(profile) {
     card.innerHTML = `
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
-      <span>${best ? formatTime(best) : `${level.size[0]} x ${level.size[1]}`}</span>
+      <span>${escapeHtml(progressLabel)}</span>
       <span>${escapeHtml(summary.routeLabel)}</span>
       <span class="level-pressure">${escapeHtml(summary.pressure)}</span>
       <span class="level-status">${status}</span>
@@ -613,8 +669,11 @@ function completeLevel() {
   stopTimer();
 
   if (profile) {
+    const moves = getRunMoveCount();
     const oldBest = profile.bestTimes[state.game.level.id];
+    const oldBestMoves = profile.bestMoves[state.game.level.id];
     profile.bestTimes[state.game.level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
+    profile.bestMoves[state.game.level.id] = oldBestMoves ? Math.min(oldBestMoves, moves) : moves;
     profile.latestLevel = Math.max(profile.latestLevel, state.game.level.id);
     recordRunEnd(profile, "cleared", elapsedMs);
     saveProfiles();
@@ -810,6 +869,13 @@ function formatTime(ms) {
     return "-";
   }
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatMoveCount(moves) {
+  if (!Number.isInteger(moves) || moves <= 0) {
+    return "";
+  }
+  return `${moves} ${moves === 1 ? "move" : "moves"}`;
 }
 
 function escapeHtml(value) {
