@@ -271,6 +271,27 @@ async function runTest() {
     runs: [],
   });
 
+  const normalizedActiveHarness = createHarness();
+  normalizedActiveHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Mira: {
+      name: "Mira",
+      latestLevel: 1,
+      bestTimes: {
+        1: 1500,
+      },
+      runs: [],
+      createdAt: "2026-05-10T00:00:00.000Z",
+    },
+  }));
+  normalizedActiveHarness.store.set(ACTIVE_NAME_KEY, "  Mira   ");
+  await bootApp(normalizedActiveHarness, summarySource, source);
+  assert.equal(normalizedActiveHarness.elements.usernameInput.value, "Mira");
+  assert.equal(normalizedActiveHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(normalizedActiveHarness.store.get(ACTIVE_NAME_KEY), "Mira");
+  const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
+  assert.equal(normalizedProfiles["  Mira   "], undefined);
+  assert.equal(normalizedProfiles.Mira.latestLevel, 1);
+
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
   await bootApp(harness, summarySource, source);
