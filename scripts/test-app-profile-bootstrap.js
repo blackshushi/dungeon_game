@@ -265,6 +265,7 @@ async function runTest() {
   assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
   assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  assert.match(repairedHarness.elements.leaderboardBody.children[0].innerHTML, /6 moves/);
   assert.match(repairedHarness.elements.levelList.children[0].innerHTML, /2\.5s \/ 12 moves/);
   assert.match(repairedHarness.elements.levelList.children[1].innerHTML, /1\.0s \/ 4 moves/);
   const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
@@ -308,6 +309,31 @@ async function runTest() {
   assert.equal(normalizedProfiles["  Mira   "], undefined);
   assert.equal(normalizedProfiles.Mira.latestLevel, 1);
   assert.equal(normalizedProfiles.Mira.bestMoves["1"], 5);
+
+  const tieBreakHarness = createHarness();
+  tieBreakHarness.store.set(STORAGE_KEY, JSON.stringify({
+    FastFeet: {
+      name: "FastFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      bestMoves: { 1: 2 },
+      runs: [],
+    },
+    WanderingFeet: {
+      name: "WanderingFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      bestMoves: { 1: 4 },
+      runs: [],
+    },
+  }));
+  tieBreakHarness.store.set(ACTIVE_NAME_KEY, "WanderingFeet");
+  await bootApp(tieBreakHarness, summarySource, source);
+  assert.equal(tieBreakHarness.elements.rankValue.textContent, "#2 of 2");
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /FastFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /2 moves/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /WanderingFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /4 moves/);
 
   const customHealthHarness = createHarness({
     startHp: 2,
