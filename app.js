@@ -1,7 +1,7 @@
 const STORAGE_KEY = "dungeon_game_profiles_v1";
 const ACTIVE_NAME_KEY = "dungeon_game_active_name";
-const START_HP = 3;
-const MAX_HP = 5;
+const DEFAULT_START_HP = 3;
+const DEFAULT_MAX_HP = 5;
 const TILE = {
   start: "S",
   exit: "E",
@@ -58,6 +58,8 @@ const levelSummary = window.DungeonLevelSummary || globalThis.DungeonLevelSummar
 
 const state = {
   levels: [],
+  startHp: DEFAULT_START_HP,
+  maxHp: DEFAULT_MAX_HP,
   profiles: {},
   activeName: "",
   game: null,
@@ -109,7 +111,7 @@ async function boot() {
 
   try {
     const data = window.DUNGEON_LEVEL_DATA || await fetchLevelData();
-    state.levels = data.levels;
+    applyLevelCatalog(data);
     profilesChanged = clampProfilesToLevelCatalog() || profilesChanged;
   } catch (error) {
     els.eventLog.textContent = "Level data could not be loaded.";
@@ -130,6 +132,12 @@ async function fetchLevelData() {
     throw new Error(`Level file returned ${response.status}`);
   }
   return response.json();
+}
+
+function applyLevelCatalog(data) {
+  state.levels = Array.isArray(data?.levels) ? data.levels : [];
+  state.startHp = toPositiveInteger(data?.startHp, DEFAULT_START_HP);
+  state.maxHp = Math.max(state.startHp, toPositiveInteger(data?.maxHp, DEFAULT_MAX_HP));
 }
 
 function bindEvents() {
@@ -297,6 +305,10 @@ function toNonNegativeInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : 0;
 }
 
+function toPositiveInteger(value, fallback) {
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
 function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -399,7 +411,7 @@ function renderLevelList(profile) {
 
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
-    const summary = levelSummary.getLevelSummary(level);
+    const summary = getCatalogLevelSummary(level);
     const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
     const card = document.createElement("button");
     card.type = "button";
@@ -446,7 +458,7 @@ function startLevel(levelId) {
   state.game = {
     level,
     position: start,
-    hp: START_HP,
+    hp: state.startHp,
     startedAt: null,
     elapsedMs: 0,
     done: false,
@@ -471,10 +483,10 @@ function renderGame() {
 
   els.playerNameValue.textContent = state.activeName || "Explorer";
   els.levelValue.textContent = `${level.id}/${state.levels.length}`;
-  els.hpValue.textContent = `${hp}/${MAX_HP}`;
+  els.hpValue.textContent = `${hp}/${state.maxHp}`;
   els.bestTimeValue.textContent = profile?.bestTimes?.[level.id] ? formatTime(profile.bestTimes[level.id]) : "-";
   els.levelName.textContent = level.name;
-  els.levelMeta.textContent = levelSummary.getLevelSummary(level).meta;
+  els.levelMeta.textContent = getCatalogLevelSummary(level).meta;
   els.eventLog.textContent = state.game.message;
 
   renderTimer();
@@ -586,7 +598,7 @@ function applyTile(tile) {
     state.game.hp -= 1;
     state.game.message = "Bomb hit. HP -1.";
   } else if (tile === TILE.heal) {
-    state.game.hp = Math.min(MAX_HP, state.game.hp + 1);
+    state.game.hp = Math.min(state.maxHp, state.game.hp + 1);
     state.game.message = "Healing pot. HP +1.";
   } else {
     state.game.message = "Step.";
@@ -668,7 +680,14 @@ function getRunMoveCount() {
 function formatRunResult(elapsedMs) {
   const moves = getRunMoveCount();
   const moveLabel = moves === 1 ? "move" : "moves";
-  return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${MAX_HP} HP`;
+  return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${state.maxHp} HP`;
+}
+
+function getCatalogLevelSummary(level) {
+  return levelSummary.getLevelSummary(level, {
+    startHp: state.startHp,
+    maxHp: state.maxHp,
+  });
 }
 
 function recordGameState(direction, tile, moved) {
