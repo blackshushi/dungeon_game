@@ -234,17 +234,21 @@ async function runTest() {
   assert.equal(corruptedHarness.elements.usernameInput.value, "Riley");
   assert.equal(corruptedHarness.elements.rankValue.textContent, "#1 of 1");
   assert.equal(corruptedHarness.elements.latestLevelValue.textContent, "0/2");
+  const recoveredProfile = JSON.parse(corruptedHarness.store.get(STORAGE_KEY)).Riley;
+  assert.equal(recoveredProfile.latestLevel, 0);
 
   const repairedHarness = createHarness();
   repairedHarness.store.set(STORAGE_KEY, JSON.stringify({
     Bad: "skip",
     Mira: {
       name: 123,
-      latestLevel: "1",
+      latestLevel: "99",
       bestTimes: {
         1: "2500",
+        2: "1000",
+        3: "50",
         two: 3000,
-        2: 0,
+        4: 0,
       },
       runs: "bad",
     },
@@ -252,8 +256,20 @@ async function runTest() {
   repairedHarness.store.set(ACTIVE_NAME_KEY, "Mira");
   await bootApp(repairedHarness, summarySource, source);
   assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
-  assert.equal(repairedHarness.elements.latestLevelValue.textContent, "1/2");
-  assert.equal(repairedHarness.elements.totalTimeValue.textContent, "2.5s");
+  assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
+  assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
+  assert.equal(typeof repairedProfile.createdAt, "string");
+  delete repairedProfile.createdAt;
+  assert.deepEqual(repairedProfile, {
+    name: "Mira",
+    latestLevel: 2,
+    bestTimes: {
+      1: 2500,
+      2: 1000,
+    },
+    runs: [],
+  });
 
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
