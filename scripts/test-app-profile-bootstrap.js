@@ -72,7 +72,7 @@ class FakeElement {
   }
 }
 
-function createHarness() {
+function createHarness(levelData = null) {
   const ids = [
     "subtitle",
     "lobbyButton",
@@ -135,7 +135,7 @@ function createHarness() {
   let intervalStarts = 0;
   let intervalClears = 0;
   const window = {
-    DUNGEON_LEVEL_DATA: {
+    DUNGEON_LEVEL_DATA: levelData || {
       levels: [
         {
           id: 1,
@@ -291,6 +291,38 @@ async function runTest() {
   const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
   assert.equal(normalizedProfiles["  Mira   "], undefined);
   assert.equal(normalizedProfiles.Mira.latestLevel, 1);
+
+  const customHealthHarness = createHarness({
+    startHp: 2,
+    maxHp: 4,
+    levels: [
+      {
+        id: 1,
+        name: "Recovery Start",
+        size: [3, 1],
+        grid: [
+          "SHE",
+        ],
+      },
+      {
+        id: 2,
+        name: "Short Fuse",
+        size: [4, 1],
+        grid: [
+          "SBBE",
+        ],
+      },
+    ],
+  });
+  customHealthHarness.elements.usernameInput.value = "Kaya";
+  await bootApp(customHealthHarness, summarySource, source);
+  assert.match(customHealthHarness.elements.levelList.children[1].innerHTML, /route unavailable/i);
+  customHealthHarness.elements.levelList.children[0].click();
+  assert.equal(customHealthHarness.elements.hpValue.textContent, "2/4");
+  customHealthHarness.moveButtons.right.click();
+  assert.equal(customHealthHarness.elements.hpValue.textContent, "3/4");
+  customHealthHarness.moveButtons.right.click();
+  assert.match(customHealthHarness.elements.resultText.textContent, /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\.$/);
 
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
