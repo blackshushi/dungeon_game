@@ -565,7 +565,7 @@ function renderGame() {
   els.playerNameValue.textContent = state.activeName || "Explorer";
   els.levelValue.textContent = `${level.id}/${state.levels.length}`;
   els.hpValue.textContent = `${hp}/${state.maxHp}`;
-  els.bestTimeValue.textContent = profile?.bestTimes?.[level.id] ? formatTime(profile.bestTimes[level.id]) : "-";
+  els.bestTimeValue.textContent = formatBestRun(profile?.bestTimes?.[level.id], profile?.bestMoves?.[level.id]);
   els.levelName.textContent = level.name;
   els.levelMeta.textContent = getCatalogLevelSummary(level).meta;
   els.eventLog.textContent = state.game.message;
@@ -765,6 +765,18 @@ function formatRunResult(elapsedMs) {
   const moves = getRunMoveCount();
   const moveLabel = moves === 1 ? "move" : "moves";
   return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${state.maxHp} HP`;
+}
+
+function formatBestRun(timeMs, moves) {
+  const parts = [];
+  if (Number.isFinite(Number(timeMs)) && Number(timeMs) > 0) {
+    parts.push(formatTime(Number(timeMs)));
+  }
+  const moveLabel = formatMoveCount(Number(moves));
+  if (moveLabel) {
+    parts.push(moveLabel);
+  }
+  return parts.length ? parts.join(" / ") : "-";
 }
 
 function getCatalogLevelSummary(level) {
