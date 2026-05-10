@@ -66,6 +66,17 @@ runTest("estimates shortest playable route length for lobby intel", () => {
   }), 4);
 });
 
+runTest("uses supplied health rules when estimating route survival", () => {
+  const level = {
+    grid: [
+      "SBBE",
+    ],
+  };
+
+  assert.equal(getShortestRouteMoves(level, { startHp: 4, maxHp: 4 }), 3);
+  assert.equal(getShortestRouteMoves(level, { startHp: 2, maxHp: 4 }), null);
+});
+
 runTest("reports the shortest survivable route when the shortest path is lethal", () => {
   const summary = getLevelSummary({
     size: [5, 3],
