@@ -1,4 +1,5 @@
 const STORAGE_KEY = "dungeon_game_profiles_v1";
+const ACTIVE_NAME_KEY = "dungeon_game_active_name";
 const START_HP = 3;
 const MAX_HP = 5;
 const TILE = {
@@ -94,7 +95,11 @@ const els = {
 
 async function boot() {
   let profilesChanged = loadProfiles();
-  state.activeName = localStorage.getItem("dungeon_game_active_name") || "";
+  const storedActiveName = localStorage.getItem(ACTIVE_NAME_KEY) || "";
+  state.activeName = storedActiveName ? normalizeName(storedActiveName) : "";
+  if (storedActiveName && state.activeName !== storedActiveName) {
+    localStorage.setItem(ACTIVE_NAME_KEY, state.activeName);
+  }
   if (state.activeName) {
     const hadProfile = Boolean(state.profiles[state.activeName]);
     ensureProfile(state.activeName);
@@ -189,7 +194,7 @@ function bindEvents() {
 function selectProfile(rawName) {
   const name = normalizeName(rawName);
   state.activeName = name;
-  localStorage.setItem("dungeon_game_active_name", name);
+  localStorage.setItem(ACTIVE_NAME_KEY, name);
   ensureProfile(name);
   saveProfiles();
   renderLobby();
