@@ -390,12 +390,20 @@ function getTotalBestTime(profile) {
   return Object.values(profile.bestTimes || {}).reduce((total, time) => total + Number(time || 0), 0);
 }
 
+function getTotalBestMoves(profile) {
+  return Object.values(profile.bestMoves || {}).reduce((total, moves) => total + Number(moves || 0), 0);
+}
+
 function getRankings() {
   return Object.values(state.profiles).sort((a, b) => {
     if (b.latestLevel !== a.latestLevel) {
       return b.latestLevel - a.latestLevel;
     }
-    return getTotalBestTime(a) - getTotalBestTime(b);
+    const timeDifference = getTotalBestTime(a) - getTotalBestTime(b);
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+    return getTotalBestMoves(a) - getTotalBestMoves(b);
   });
 }
 
@@ -439,18 +447,20 @@ function renderLeaderboard() {
 
   if (!rankings.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="4">No runs yet</td>`;
+    row.innerHTML = `<td colspan="5">No runs yet</td>`;
     els.leaderboardBody.append(row);
     return;
   }
 
   rankings.forEach((profile, index) => {
+    const totalMoves = getTotalBestMoves(profile);
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${escapeHtml(profile.name)}</td>
       <td>${profile.latestLevel}</td>
       <td>${getTotalBestTime(profile) ? formatTime(getTotalBestTime(profile)) : "-"}</td>
+      <td>${totalMoves ? formatMoveCount(totalMoves) : "-"}</td>
     `;
     els.leaderboardBody.append(row);
   });
