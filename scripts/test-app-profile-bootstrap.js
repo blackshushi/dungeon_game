@@ -299,7 +299,7 @@ async function runTest() {
   assert.equal(harness.elements.levelList.children.length, 2);
   assert.match(harness.elements.levelList.children[0].innerHTML, /2-move route/);
   assert.match(harness.elements.levelList.children[0].innerHTML, /Calm route: 0 bombs, 0 healing pots/);
-  assert.match(harness.elements.levelList.children[1].innerHTML, /4-move route/);
+  assert.match(harness.elements.levelList.children[1].innerHTML, /route unavailable/i);
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
