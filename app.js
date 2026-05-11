@@ -391,6 +391,21 @@ function getTotalBestTime(profile) {
   return Object.values(profile.bestTimes || {}).reduce((total, time) => total + Number(time || 0), 0);
 }
 
+function compareTotalBestTime(a, b) {
+  const aTime = getTotalBestTime(a);
+  const bTime = getTotalBestTime(b);
+  if (aTime && bTime) {
+    return aTime - bTime;
+  }
+  if (aTime) {
+    return -1;
+  }
+  if (bTime) {
+    return 1;
+  }
+  return 0;
+}
+
 function getTotalBestMoves(profile) {
   return Object.values(profile.bestMoves || {}).reduce((total, moves) => total + Number(moves || 0), 0);
 }
@@ -415,7 +430,7 @@ function getRankings() {
     if (b.latestLevel !== a.latestLevel) {
       return b.latestLevel - a.latestLevel;
     }
-    const timeDifference = getTotalBestTime(a) - getTotalBestTime(b);
+    const timeDifference = compareTotalBestTime(a, b);
     if (timeDifference !== 0) {
       return timeDifference;
     }
