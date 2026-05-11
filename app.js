@@ -722,26 +722,32 @@ function applyTile(tile) {
 function completeLevel() {
   const elapsedMs = getCurrentElapsedMs();
   const profile = getActiveProfile();
+  const moves = getRunMoveCount();
+  const level = state.game.level;
+  const nextLevel = getNextCatalogLevel(level.id);
+  const isLastLevel = level.id >= state.levels.length;
+  let recordMessage = "";
   state.game.done = true;
   state.game.elapsedMs = elapsedMs;
   stopTimer();
 
   if (profile) {
-    const moves = getRunMoveCount();
-    const oldBest = profile.bestTimes[state.game.level.id];
-    const oldBestMoves = profile.bestMoves[state.game.level.id];
-    profile.bestTimes[state.game.level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
-    profile.bestMoves[state.game.level.id] = oldBestMoves ? Math.min(oldBestMoves, moves) : moves;
-    profile.latestLevel = Math.max(profile.latestLevel, state.game.level.id);
+    const oldBest = profile.bestTimes[level.id];
+    const oldBestMoves = profile.bestMoves[level.id];
+    const isNewBestTime = isBetterTime(elapsedMs, oldBest);
+    const isNewBestMoves = isBetterMoveCount(moves, oldBestMoves);
+    recordMessage = formatRecordMessage(isNewBestTime, isNewBestMoves);
+    profile.bestTimes[level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
+    profile.bestMoves[level.id] = oldBestMoves ? Math.min(oldBestMoves, moves) : moves;
+    profile.latestLevel = Math.max(profile.latestLevel, level.id);
     recordRunEnd(profile, "cleared", elapsedMs);
     saveProfiles();
   }
 
-  const isLastLevel = state.game.level.id >= state.levels.length;
   openResult(
     isLastLevel ? "Dungeon clear" : "Level clear",
-    `${state.game.level.name} finished in ${formatRunResult(elapsedMs)}.`,
-    isLastLevel ? "Lobby" : "Next Level",
+    `${level.name} finished in ${formatRunResult(elapsedMs)}.${recordMessage}${formatNextLevelMessage(nextLevel)}`,
+    isLastLevel ? "Lobby" : formatNextLevelAction(nextLevel, level.id + 1),
     false,
   );
   renderGame();
@@ -798,6 +804,42 @@ function formatRunResult(elapsedMs) {
   const moves = getRunMoveCount();
   const moveLabel = moves === 1 ? "move" : "moves";
   return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${state.maxHp} HP`;
+}
+
+function getNextCatalogLevel(levelId) {
+  return state.levels.find((level) => level.id === levelId + 1) || null;
+}
+
+function formatNextLevelAction(nextLevel, fallbackLevelId) {
+  const levelId = nextLevel?.id || fallbackLevelId;
+  return `Next: Level ${levelId}`;
+}
+
+function formatNextLevelMessage(nextLevel) {
+  return nextLevel ? ` Next: ${nextLevel.name}.` : "";
+}
+
+function isBetterTime(elapsedMs, oldBest) {
+  const best = Number(oldBest);
+  return !Number.isFinite(best) || best <= 0 || elapsedMs < best;
+}
+
+function isBetterMoveCount(moves, oldBestMoves) {
+  const best = Number(oldBestMoves);
+  return !Number.isInteger(best) || best <= 0 || moves < best;
+}
+
+function formatRecordMessage(isNewBestTime, isNewBestMoves) {
+  if (isNewBestTime && isNewBestMoves) {
+    return " New best time and moves.";
+  }
+  if (isNewBestTime) {
+    return " New best time.";
+  }
+  if (isNewBestMoves) {
+    return " New best moves.";
+  }
+  return "";
 }
 
 function formatBestRun(timeMs, moves) {
