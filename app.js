@@ -515,19 +515,33 @@ function renderLevelList(profile) {
     const card = document.createElement("button");
     card.type = "button";
     card.disabled = !unlocked;
-    card.className = `level-card${best ? " clear" : ""}${!unlocked ? " locked" : ""}${unlocked && !best && level.id === nextLevelId ? " next" : ""}`;
+    const isNextLevel = unlocked && !best && level.id === nextLevelId;
+    card.className = `level-card${best ? " clear" : ""}${!unlocked ? " locked" : ""}${isNextLevel ? " next" : ""}`;
     const status = !unlocked
       ? `Clear level ${Math.max(1, level.id - 1)} to unlock`
       : best
         ? "Cleared"
-        : (level.id === nextLevelId ? "Ready to play" : "Replay");
+        : (isNextLevel ? "Next up" : "Replay");
+    card.setAttribute(
+      "aria-label",
+      [
+        `Level ${level.id}: ${level.name}`,
+        status,
+        progressLabel,
+        summary.routeLabel,
+        summary.pressure,
+      ].filter(Boolean).join(". "),
+    );
+    if (isNextLevel) {
+      card.setAttribute("aria-current", "step");
+    }
     card.innerHTML = `
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
       <span>${escapeHtml(progressLabel)}</span>
       <span>${escapeHtml(summary.routeLabel)}</span>
       <span class="level-pressure">${escapeHtml(summary.pressure)}</span>
-      <span class="level-status">${status}</span>
+      <span class="level-status">${escapeHtml(status)}</span>
     `;
     if (unlocked) {
       card.addEventListener("click", () => {
