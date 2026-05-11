@@ -86,6 +86,7 @@ const els = {
   hpValue: document.querySelector("#hpValue"),
   timerValue: document.querySelector("#timerValue"),
   bestTimeValue: document.querySelector("#bestTimeValue"),
+  moveValue: document.querySelector("#moveValue"),
   levelName: document.querySelector("#levelName"),
   levelMeta: document.querySelector("#levelMeta"),
   eventLog: document.querySelector("#eventLog"),
@@ -582,6 +583,7 @@ function renderGame() {
   els.playerNameValue.textContent = state.activeName || "Explorer";
   els.levelValue.textContent = `${level.id}/${state.levels.length}`;
   els.hpValue.textContent = `${hp}/${state.maxHp}`;
+  els.moveValue.textContent = String(getRunMoveCount());
   els.bestTimeValue.textContent = formatBestRun(profile?.bestTimes?.[level.id], profile?.bestMoves?.[level.id]);
   els.levelName.textContent = level.name;
   els.levelMeta.textContent = getCatalogLevelSummary(level).meta;
