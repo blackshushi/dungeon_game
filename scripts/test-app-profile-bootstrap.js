@@ -394,7 +394,10 @@ async function runTest() {
   customHealthHarness.moveButtons.right.click();
   assert.equal(customHealthHarness.elements.hpValue.textContent, "3/4");
   customHealthHarness.moveButtons.right.click();
-  assert.match(customHealthHarness.elements.resultText.textContent, /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\.$/);
+  assert.match(
+    customHealthHarness.elements.resultText.textContent,
+    /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\. New best time and moves\. Next: Short Fuse\.$/,
+  );
 
   const progressionHarness = createHarness({
     levels: [
@@ -424,7 +427,11 @@ async function runTest() {
 
   clickMoves(progressionHarness, ["right"]);
   assert.equal(progressionHarness.elements.resultTitle.textContent, "Level clear");
-  assert.equal(progressionHarness.elements.nextButton.textContent, "Next Level");
+  assert.equal(progressionHarness.elements.nextButton.textContent, "Next: Level 2");
+  assert.match(
+    progressionHarness.elements.resultText.textContent,
+    /^First Gate finished in \d+\.\ds, 1 move, 3\/5 HP\. New best time and moves\. Next: Second Gate\.$/,
+  );
   let progressionProfiles = JSON.parse(progressionHarness.store.get(STORAGE_KEY));
   assert.equal(progressionProfiles.Ivy.latestLevel, 1);
   assert.equal(progressionProfiles.Ivy.bestMoves["1"], 1);
@@ -439,6 +446,10 @@ async function runTest() {
   clickMoves(progressionHarness, ["right", "right"]);
   assert.equal(progressionHarness.elements.resultTitle.textContent, "Dungeon clear");
   assert.equal(progressionHarness.elements.nextButton.textContent, "Lobby");
+  assert.match(
+    progressionHarness.elements.resultText.textContent,
+    /^Second Gate finished in \d+\.\ds, 2 moves, 3\/5 HP\. New best time and moves\.$/,
+  );
   progressionProfiles = JSON.parse(progressionHarness.store.get(STORAGE_KEY));
   assert.equal(progressionProfiles.Ivy.latestLevel, 2);
   assert.equal(progressionProfiles.Ivy.bestMoves["2"], 2);
@@ -488,7 +499,10 @@ async function runTest() {
   harness.moveButtons.down.click();
   assert.equal(harness.getIntervalClears(), 1);
   assert.equal(harness.elements.moveValue.textContent, "2");
-  assert.match(harness.elements.resultText.textContent, /^Profile Path finished in \d+\.\ds, 2 moves, 3\/5 HP\.$/);
+  assert.match(
+    harness.elements.resultText.textContent,
+    /^Profile Path finished in \d+\.\ds, 2 moves, 3\/5 HP\. New best time and moves\. Next: Trap Hall\.$/,
+  );
 
   assert.equal(harness.store.get(ACTIVE_NAME_KEY), "Dana");
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
