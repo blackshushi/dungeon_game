@@ -465,6 +465,49 @@ async function runTest() {
   assert.equal(progressionHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(progressionHarness.elements.startButton.textContent, "Replay Final Level");
 
+  const replayHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Known Shortcut",
+        size: [2, 1],
+        grid: [
+          "SE",
+        ],
+      },
+      {
+        id: 2,
+        name: "Next Door",
+        size: [2, 1],
+        grid: [
+          "SE",
+        ],
+      },
+    ],
+  });
+  replayHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Nia: {
+      name: "Nia",
+      latestLevel: 1,
+      bestTimes: { 1: 1 },
+      bestMoves: { 1: 1 },
+      runs: [],
+      createdAt: "2026-05-12T00:00:00.000Z",
+    },
+  }));
+  replayHarness.store.set(ACTIVE_NAME_KEY, "Nia");
+  await bootApp(replayHarness, summarySource, source);
+  replayHarness.elements.levelList.children[0].click();
+  replayHarness.moveButtons.right.click();
+  assert.match(
+    replayHarness.elements.resultText.textContent,
+    /^Known Shortcut finished in \d+\.\ds, 1 move, 3\/5 HP\. Next: Next Door\.$/,
+  );
+  assert.doesNotMatch(replayHarness.elements.resultText.textContent, /New best/);
+  const replayProfiles = JSON.parse(replayHarness.store.get(STORAGE_KEY));
+  assert.equal(replayProfiles.Nia.bestTimes["1"], 1);
+  assert.equal(replayProfiles.Nia.bestMoves["1"], 1);
+
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
   await bootApp(harness, summarySource, source);
