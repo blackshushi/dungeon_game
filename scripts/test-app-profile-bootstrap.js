@@ -412,9 +412,11 @@ async function runTest() {
   assert.equal(harness.getIntervalStarts(), 0);
   assert.equal(harness.elements.moveValue.textContent, "0");
   assert.equal(harness.elements.eventLog.textContent, "The wall holds.");
+  assert.equal(JSON.parse(harness.store.get(STORAGE_KEY)).Dana.runs.length, 0);
   harness.moveButtons.right.click();
   assert.equal(harness.getIntervalStarts(), 1);
   assert.equal(harness.elements.moveValue.textContent, "1");
+  assert.equal(JSON.parse(harness.store.get(STORAGE_KEY)).Dana.runs.length, 0);
   harness.moveButtons.down.click();
   assert.equal(harness.getIntervalClears(), 1);
   assert.equal(harness.elements.moveValue.textContent, "2");
