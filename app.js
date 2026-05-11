@@ -77,6 +77,7 @@ const els = {
   rankValue: document.querySelector("#rankValue"),
   latestLevelValue: document.querySelector("#latestLevelValue"),
   totalTimeValue: document.querySelector("#totalTimeValue"),
+  totalMovesValue: document.querySelector("#totalMovesValue"),
   leaderboardBody: document.querySelector("#leaderboardBody"),
   levelList: document.querySelector("#levelList"),
   board: document.querySelector("#board"),
@@ -255,6 +256,18 @@ function clampProfilesToLevelCatalog() {
       profile.bestTimes = bestTimes;
       changed = true;
     }
+
+    const bestMoves = Object.entries(profile.bestMoves || {}).reduce((validMoves, [levelId, moves]) => {
+      const level = Number(levelId);
+      if (Number.isInteger(level) && level >= 1 && level <= totalLevels) {
+        validMoves[String(level)] = moves;
+      }
+      return validMoves;
+    }, {});
+    if (JSON.stringify(bestMoves) !== JSON.stringify(profile.bestMoves || {})) {
+      profile.bestMoves = bestMoves;
+      changed = true;
+    }
   }
 
   return changed;
@@ -271,12 +284,15 @@ function sanitizeProfiles(value) {
     }
 
     const name = normalizeName(typeof profile.name === "string" ? profile.name : fallbackName);
+    const runs = Array.isArray(profile.runs) ? profile.runs : [];
+    const bestMoves = backfillBestMovesFromRuns(sanitizeBestMoves(profile.bestMoves), runs);
     profiles[name] = {
       ...profile,
       name,
       latestLevel: toNonNegativeInteger(profile.latestLevel),
       bestTimes: sanitizeBestTimes(profile.bestTimes),
-      runs: Array.isArray(profile.runs) ? profile.runs : [],
+      bestMoves,
+      runs,
       createdAt: typeof profile.createdAt === "string" && profile.createdAt
         ? profile.createdAt
         : new Date().toISOString(),
@@ -297,6 +313,42 @@ function sanitizeBestTimes(value) {
       bestTimes[String(level)] = timeMs;
     }
     return bestTimes;
+  }, {});
+}
+
+function backfillBestMovesFromRuns(bestMoves, runs) {
+  const nextBestMoves = { ...bestMoves };
+
+  for (const run of runs) {
+    if (!isRecord(run) || run.outcome !== "cleared") {
+      continue;
+    }
+
+    const level = Number(run.level);
+    const moves = Number(run.moves);
+    if (!Number.isInteger(level) || level <= 0 || !Number.isInteger(moves) || moves <= 0) {
+      continue;
+    }
+
+    const key = String(level);
+    nextBestMoves[key] = nextBestMoves[key] ? Math.min(nextBestMoves[key], moves) : moves;
+  }
+
+  return nextBestMoves;
+}
+
+function sanitizeBestMoves(value) {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.entries(value).reduce((bestMoves, [levelId, moves]) => {
+    const level = Number(levelId);
+    const moveCount = Number(moves);
+    if (Number.isInteger(level) && level > 0 && Number.isInteger(moveCount) && moveCount > 0) {
+      bestMoves[String(level)] = moveCount;
+    }
+    return bestMoves;
   }, {});
 }
 
@@ -323,6 +375,7 @@ function ensureProfile(name) {
       name,
       latestLevel: 0,
       bestTimes: {},
+      bestMoves: {},
       runs: [],
       createdAt: new Date().toISOString(),
     };
@@ -338,12 +391,35 @@ function getTotalBestTime(profile) {
   return Object.values(profile.bestTimes || {}).reduce((total, time) => total + Number(time || 0), 0);
 }
 
+function getTotalBestMoves(profile) {
+  return Object.values(profile.bestMoves || {}).reduce((total, moves) => total + Number(moves || 0), 0);
+}
+
+function compareTotalBestMoves(a, b) {
+  const aMoves = getTotalBestMoves(a);
+  const bMoves = getTotalBestMoves(b);
+  if (aMoves && bMoves) {
+    return aMoves - bMoves;
+  }
+  if (aMoves) {
+    return -1;
+  }
+  if (bMoves) {
+    return 1;
+  }
+  return 0;
+}
+
 function getRankings() {
   return Object.values(state.profiles).sort((a, b) => {
     if (b.latestLevel !== a.latestLevel) {
       return b.latestLevel - a.latestLevel;
     }
-    return getTotalBestTime(a) - getTotalBestTime(b);
+    const timeDifference = getTotalBestTime(a) - getTotalBestTime(b);
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+    return compareTotalBestMoves(a, b);
   });
 }
 
@@ -367,6 +443,7 @@ function renderLobby() {
   els.rankValue.textContent = getRank(profile);
   els.latestLevelValue.textContent = profile ? `${profile.latestLevel}/${state.levels.length || 10}` : "-";
   els.totalTimeValue.textContent = profile && getTotalBestTime(profile) ? formatTime(getTotalBestTime(profile)) : "-";
+  els.totalMovesValue.textContent = profile && getTotalBestMoves(profile) ? formatMoveCount(getTotalBestMoves(profile)) : "-";
   els.startButton.disabled = !state.levels.length;
   const nextLevelId = progression.getNextLevelId(profile?.latestLevel || 0, state.levels.length);
   if (!state.levels.length || nextLevelId <= 1) {
@@ -387,18 +464,20 @@ function renderLeaderboard() {
 
   if (!rankings.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="4">No runs yet</td>`;
+    row.innerHTML = `<td colspan="5">No runs yet</td>`;
     els.leaderboardBody.append(row);
     return;
   }
 
   rankings.forEach((profile, index) => {
+    const totalMoves = getTotalBestMoves(profile);
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${index + 1}</td>
       <td>${escapeHtml(profile.name)}</td>
       <td>${profile.latestLevel}</td>
       <td>${getTotalBestTime(profile) ? formatTime(getTotalBestTime(profile)) : "-"}</td>
+      <td>${totalMoves ? formatMoveCount(totalMoves) : "-"}</td>
     `;
     els.leaderboardBody.append(row);
   });
@@ -411,6 +490,10 @@ function renderLevelList(profile) {
 
   state.levels.forEach((level) => {
     const best = profile?.bestTimes?.[level.id];
+    const bestMoves = profile?.bestMoves?.[level.id];
+    const progressLabel = best
+      ? [formatTime(best), formatMoveCount(bestMoves)].filter(Boolean).join(" / ")
+      : `${level.size[0]} x ${level.size[1]}`;
     const summary = getCatalogLevelSummary(level);
     const unlocked = progression.isLevelUnlocked(level.id, latestLevel, state.levels.length);
     const card = document.createElement("button");
@@ -425,7 +508,7 @@ function renderLevelList(profile) {
     card.innerHTML = `
       <strong>Level ${level.id}</strong>
       <span>${escapeHtml(level.name)}</span>
-      <span>${best ? formatTime(best) : `${level.size[0]} x ${level.size[1]}`}</span>
+      <span>${escapeHtml(progressLabel)}</span>
       <span>${escapeHtml(summary.routeLabel)}</span>
       <span class="level-pressure">${escapeHtml(summary.pressure)}</span>
       <span class="level-status">${status}</span>
@@ -484,7 +567,7 @@ function renderGame() {
   els.playerNameValue.textContent = state.activeName || "Explorer";
   els.levelValue.textContent = `${level.id}/${state.levels.length}`;
   els.hpValue.textContent = `${hp}/${state.maxHp}`;
-  els.bestTimeValue.textContent = profile?.bestTimes?.[level.id] ? formatTime(profile.bestTimes[level.id]) : "-";
+  els.bestTimeValue.textContent = formatBestRun(profile?.bestTimes?.[level.id], profile?.bestMoves?.[level.id]);
   els.levelName.textContent = level.name;
   els.levelMeta.textContent = getCatalogLevelSummary(level).meta;
   els.eventLog.textContent = state.game.message;
@@ -613,8 +696,11 @@ function completeLevel() {
   stopTimer();
 
   if (profile) {
+    const moves = getRunMoveCount();
     const oldBest = profile.bestTimes[state.game.level.id];
+    const oldBestMoves = profile.bestMoves[state.game.level.id];
     profile.bestTimes[state.game.level.id] = oldBest ? Math.min(oldBest, elapsedMs) : elapsedMs;
+    profile.bestMoves[state.game.level.id] = oldBestMoves ? Math.min(oldBestMoves, moves) : moves;
     profile.latestLevel = Math.max(profile.latestLevel, state.game.level.id);
     recordRunEnd(profile, "cleared", elapsedMs);
     saveProfiles();
@@ -681,6 +767,18 @@ function formatRunResult(elapsedMs) {
   const moves = getRunMoveCount();
   const moveLabel = moves === 1 ? "move" : "moves";
   return `${formatTime(elapsedMs)}, ${moves} ${moveLabel}, ${state.game.hp}/${state.maxHp} HP`;
+}
+
+function formatBestRun(timeMs, moves) {
+  const parts = [];
+  if (Number.isFinite(Number(timeMs)) && Number(timeMs) > 0) {
+    parts.push(formatTime(Number(timeMs)));
+  }
+  const moveLabel = formatMoveCount(Number(moves));
+  if (moveLabel) {
+    parts.push(moveLabel);
+  }
+  return parts.length ? parts.join(" / ") : "-";
 }
 
 function getCatalogLevelSummary(level) {
@@ -810,6 +908,13 @@ function formatTime(ms) {
     return "-";
   }
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function formatMoveCount(moves) {
+  if (!Number.isInteger(moves) || moves <= 0) {
+    return "";
+  }
+  return `${moves} ${moves === 1 ? "move" : "moves"}`;
 }
 
 function escapeHtml(value) {

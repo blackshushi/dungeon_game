@@ -84,6 +84,7 @@ function createHarness(levelData = null) {
     "rankValue",
     "latestLevelValue",
     "totalTimeValue",
+    "totalMovesValue",
     "leaderboardBody",
     "levelList",
     "board",
@@ -250,6 +251,13 @@ async function runTest() {
         two: 3000,
         4: 0,
       },
+      bestMoves: {
+        1: "12",
+        2: 4,
+        3: 2,
+        two: 6,
+        4: 0,
+      },
       runs: "bad",
     },
   }));
@@ -258,6 +266,12 @@ async function runTest() {
   assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
   assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  assert.equal(repairedHarness.elements.totalMovesValue.textContent, "16 moves");
+  assert.match(repairedHarness.elements.leaderboardBody.children[0].innerHTML, /6 moves/);
+  assert.match(repairedHarness.elements.levelList.children[0].innerHTML, /2\.5s \/ 12 moves/);
+  assert.match(repairedHarness.elements.levelList.children[1].innerHTML, /1\.0s \/ 4 moves/);
+  repairedHarness.elements.levelList.children[0].click();
+  assert.equal(repairedHarness.elements.bestTimeValue.textContent, "2.5s / 12 moves");
   const repairedProfile = JSON.parse(repairedHarness.store.get(STORAGE_KEY)).Mira;
   assert.equal(typeof repairedProfile.createdAt, "string");
   delete repairedProfile.createdAt;
@@ -267,6 +281,10 @@ async function runTest() {
     bestTimes: {
       1: 2500,
       2: 1000,
+    },
+    bestMoves: {
+      1: 12,
+      2: 4,
     },
     runs: [],
   });
@@ -279,7 +297,10 @@ async function runTest() {
       bestTimes: {
         1: 1500,
       },
-      runs: [],
+      runs: [
+        { level: 1, outcome: "cleared", moves: 5 },
+        { level: 1, outcome: "failed", moves: 2 },
+      ],
       createdAt: "2026-05-10T00:00:00.000Z",
     },
   }));
@@ -287,10 +308,46 @@ async function runTest() {
   await bootApp(normalizedActiveHarness, summarySource, source);
   assert.equal(normalizedActiveHarness.elements.usernameInput.value, "Mira");
   assert.equal(normalizedActiveHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(normalizedActiveHarness.elements.totalMovesValue.textContent, "5 moves");
   assert.equal(normalizedActiveHarness.store.get(ACTIVE_NAME_KEY), "Mira");
   const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
   assert.equal(normalizedProfiles["  Mira   "], undefined);
   assert.equal(normalizedProfiles.Mira.latestLevel, 1);
+  assert.equal(normalizedProfiles.Mira.bestMoves["1"], 5);
+
+  const tieBreakHarness = createHarness();
+  tieBreakHarness.store.set(STORAGE_KEY, JSON.stringify({
+    FastFeet: {
+      name: "FastFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      bestMoves: { 1: 2 },
+      runs: [],
+    },
+    LegacyFeet: {
+      name: "LegacyFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      runs: [],
+    },
+    WanderingFeet: {
+      name: "WanderingFeet",
+      latestLevel: 1,
+      bestTimes: { 1: 1000 },
+      bestMoves: { 1: 4 },
+      runs: [],
+    },
+  }));
+  tieBreakHarness.store.set(ACTIVE_NAME_KEY, "WanderingFeet");
+  await bootApp(tieBreakHarness, summarySource, source);
+  assert.equal(tieBreakHarness.elements.rankValue.textContent, "#2 of 3");
+  assert.equal(tieBreakHarness.elements.totalMovesValue.textContent, "4 moves");
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /FastFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /2 moves/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /WanderingFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /4 moves/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[2].innerHTML, /LegacyFeet/);
+  assert.match(tieBreakHarness.elements.leaderboardBody.children[2].innerHTML, /<td>-<\/td>/);
 
   const customHealthHarness = createHarness({
     startHp: 2,
@@ -335,7 +392,10 @@ async function runTest() {
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
-  assert.equal(harness.elements.levelMeta.textContent, "2 x 2 grid - 2-move route - 0 bombs - 0 healing pots");
+  assert.equal(
+    harness.elements.levelMeta.textContent,
+    "2 x 2 grid - 2-move route - lowest HP 3/5 - 0 bombs - 0 healing pots",
+  );
   assert.equal(harness.getIntervalStarts(), 0);
 
   harness.moveButtons.left.click();
@@ -351,6 +411,7 @@ async function runTest() {
   const profiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(profiles.Dana.latestLevel, 1);
   assert.ok(profiles.Dana.bestTimes["1"] > 0);
+  assert.equal(profiles.Dana.bestMoves["1"], 2);
   assert.equal(profiles.Dana.runs.length, 1);
   assert.equal(profiles.Dana.runs[0].outcome, "cleared");
   assert.equal(profiles.Dana.runs[0].moves, 2);
@@ -404,6 +465,8 @@ async function runTest() {
   const updatedProfiles = JSON.parse(harness.store.get(STORAGE_KEY));
   assert.equal(updatedProfiles.Dana.latestLevel, 1);
   assert.equal(updatedProfiles.Dana.bestTimes["2"], undefined);
+  assert.equal(updatedProfiles.Dana.bestMoves["1"], 2);
+  assert.equal(updatedProfiles.Dana.bestMoves["2"], undefined);
   assert.equal(updatedProfiles.Dana.runs.length, 2);
   assert.equal(updatedProfiles.Dana.runs[1].outcome, "failed");
   assert.equal(updatedProfiles.Dana.runs[1].moves, 3);

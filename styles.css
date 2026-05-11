@@ -201,7 +201,7 @@ input:focus {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
 }
@@ -232,7 +232,7 @@ input:focus {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 320px;
+  min-width: 380px;
 }
 
 th,

@@ -65,7 +65,7 @@
     return counts;
   }
 
-  function getShortestRouteMoves(level, options = {}) {
+  function getShortestRouteStats(level, options = {}) {
     const grid = Array.isArray(level && level.grid) ? level.grid : [];
     if (!grid.length || typeof grid[0] !== "string" || !grid[0].length) {
       return null;
@@ -80,13 +80,23 @@
     const width = grid[0].length;
     const height = grid.length;
     const { startHp, maxHp } = getRouteHealthConfig(options);
-    const queue = [{ ...start, hp: startHp, distance: 0 }];
-    const seen = new Set([stateKey(start.x, start.y, startHp)]);
+    const queue = [{ ...start, hp: startHp, distance: 0, lowestHp: startHp }];
+    const seen = new Map([[stateKey(start.x, start.y, startHp), startHp]]);
+    let best = null;
 
     for (let index = 0; index < queue.length; index += 1) {
       const current = queue[index];
+      if (best && current.distance > best.moves) {
+        break;
+      }
       if (current.x === exit.x && current.y === exit.y) {
-        return current.distance;
+        if (!best || current.distance < best.moves || current.lowestHp > best.lowestHp) {
+          best = {
+            moves: current.distance,
+            lowestHp: current.lowestHp,
+          };
+        }
+        continue;
       }
 
       for (const delta of DELTAS) {
@@ -109,16 +119,22 @@
           continue;
         }
 
+        const lowestHp = Math.min(current.lowestHp, nextHp);
         const key = stateKey(next.x, next.y, nextHp);
-        if (seen.has(key)) {
+        if (seen.has(key) && seen.get(key) >= lowestHp) {
           continue;
         }
-        seen.add(key);
-        queue.push({ ...next, hp: nextHp });
+        seen.set(key, lowestHp);
+        queue.push({ ...next, hp: nextHp, lowestHp });
       }
     }
 
-    return null;
+    return best;
+  }
+
+  function getShortestRouteMoves(level, options = {}) {
+    const stats = getShortestRouteStats(level, options);
+    return stats ? stats.moves : null;
   }
 
   function findTile(grid, tile) {
@@ -186,28 +202,45 @@
     return Number.isInteger(moves) && moves >= 0 ? `${moves}-move route` : "route unavailable";
   }
 
+  function formatRouteSurvival(routeStats, maxHp) {
+    return routeStats ? `lowest HP ${routeStats.lowestHp}/${maxHp}` : "";
+  }
+
   function getLevelSummary(level, options = {}) {
     const size = getLevelSize(level);
     const counts = countLevelTiles(level);
     const label = getPressureLabel(counts);
-    const routeMoves = getShortestRouteMoves(level, options);
+    const { maxHp } = getRouteHealthConfig(options);
+    const routeStats = getShortestRouteStats(level, options);
+    const routeMoves = routeStats ? routeStats.moves : null;
     const routeLabel = formatRouteMoves(routeMoves);
+    const routeSurvival = formatRouteSurvival(routeStats, maxHp);
     const bombText = formatCount(counts.bombs, "bomb", "bombs");
     const healText = formatCount(counts.heals, "healing pot", "healing pots");
+    const metaParts = [`${size.width} x ${size.height} grid`, routeLabel];
+    if (routeSurvival) {
+      metaParts.push(routeSurvival);
+    }
+    metaParts.push(bombText, healText);
 
     return {
       ...size,
       ...counts,
       label,
+      routeLowestHp: routeStats ? routeStats.lowestHp : null,
       routeMoves,
       routeLabel,
-      meta: `${size.width} x ${size.height} grid - ${routeLabel} - ${bombText} - ${healText}`,
-      pressure: `${label}: ${bombText}, ${healText}`,
+      routeSurvival,
+      meta: metaParts.join(" - "),
+      pressure: routeSurvival
+        ? `${label}: ${bombText}, ${healText}, ${routeSurvival}`
+        : `${label}: ${bombText}, ${healText}`,
     };
   }
 
   const api = {
     countLevelTiles,
+    getShortestRouteStats,
     getShortestRouteMoves,
     getLevelSummary,
   };
