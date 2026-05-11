@@ -136,6 +136,7 @@ function createHarness(levelData = null) {
   let now = 1000;
   let intervalStarts = 0;
   let intervalClears = 0;
+  const windowListeners = {};
   const window = {
     DUNGEON_LEVEL_DATA: levelData || {
       levels: [
@@ -158,7 +159,10 @@ function createHarness(levelData = null) {
         },
       ],
     },
-    addEventListener() {},
+    addEventListener(type, handler) {
+      windowListeners[type] = windowListeners[type] || [];
+      windowListeners[type].push(handler);
+    },
     setInterval() {
       intervalStarts += 1;
       return intervalStarts;
@@ -191,6 +195,23 @@ function createHarness(levelData = null) {
     elements,
     moveButtons: Object.fromEntries(moveButtons.map((button) => [button.dataset.move, button])),
     store,
+    dispatchWindowEvent(type, event = {}) {
+      const syntheticEvent = {
+        type,
+        defaultPrevented: false,
+        ...event,
+      };
+      syntheticEvent.preventDefault = () => {
+        syntheticEvent.defaultPrevented = true;
+        if (typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+      };
+      for (const handler of windowListeners[type] || []) {
+        handler(syntheticEvent);
+      }
+      return syntheticEvent;
+    },
     getIntervalStarts() {
       return intervalStarts;
     },
@@ -398,6 +419,39 @@ async function runTest() {
     customHealthHarness.elements.resultText.textContent,
     /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\. New best time and moves\. Next: Short Fuse\.$/,
   );
+
+  const keyboardHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Keyboard Hall",
+        size: [3, 1],
+        grid: [
+          "S.E",
+        ],
+      },
+    ],
+  });
+  keyboardHarness.elements.usernameInput.value = "Keys";
+  await bootApp(keyboardHarness, summarySource, source);
+  keyboardHarness.elements.startButton.click();
+  const ignoredKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "x" });
+  assert.equal(ignoredKey.defaultPrevented, false);
+  assert.equal(keyboardHarness.elements.moveValue.textContent, "0");
+  assert.equal(keyboardHarness.getIntervalStarts(), 0);
+  const firstMoveKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "d" });
+  assert.equal(firstMoveKey.defaultPrevented, true);
+  assert.equal(keyboardHarness.elements.moveValue.textContent, "1");
+  assert.equal(keyboardHarness.getIntervalStarts(), 1);
+  const clearKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(clearKey.defaultPrevented, true);
+  assert.equal(keyboardHarness.elements.resultTitle.textContent, "Dungeon clear");
+  const keyboardProfiles = JSON.parse(keyboardHarness.store.get(STORAGE_KEY));
+  assert.equal(keyboardProfiles.Keys.runs.length, 1);
+  assert.equal(keyboardProfiles.Keys.runs[0].outcome, "cleared");
+  const doneKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(doneKey.defaultPrevented, false);
+  assert.equal(JSON.parse(keyboardHarness.store.get(STORAGE_KEY)).Keys.runs.length, 1);
 
   const progressionHarness = createHarness({
     levels: [
