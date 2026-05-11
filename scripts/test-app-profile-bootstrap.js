@@ -84,6 +84,7 @@ function createHarness(levelData = null) {
     "rankValue",
     "latestLevelValue",
     "totalTimeValue",
+    "totalMovesValue",
     "leaderboardBody",
     "levelList",
     "board",
@@ -265,6 +266,7 @@ async function runTest() {
   assert.equal(repairedHarness.elements.rankValue.textContent, "#1 of 1");
   assert.equal(repairedHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(repairedHarness.elements.totalTimeValue.textContent, "3.5s");
+  assert.equal(repairedHarness.elements.totalMovesValue.textContent, "16 moves");
   assert.match(repairedHarness.elements.leaderboardBody.children[0].innerHTML, /6 moves/);
   assert.match(repairedHarness.elements.levelList.children[0].innerHTML, /2\.5s \/ 12 moves/);
   assert.match(repairedHarness.elements.levelList.children[1].innerHTML, /1\.0s \/ 4 moves/);
@@ -306,6 +308,7 @@ async function runTest() {
   await bootApp(normalizedActiveHarness, summarySource, source);
   assert.equal(normalizedActiveHarness.elements.usernameInput.value, "Mira");
   assert.equal(normalizedActiveHarness.elements.rankValue.textContent, "#1 of 1");
+  assert.equal(normalizedActiveHarness.elements.totalMovesValue.textContent, "5 moves");
   assert.equal(normalizedActiveHarness.store.get(ACTIVE_NAME_KEY), "Mira");
   const normalizedProfiles = JSON.parse(normalizedActiveHarness.store.get(STORAGE_KEY));
   assert.equal(normalizedProfiles["  Mira   "], undefined);
@@ -338,6 +341,7 @@ async function runTest() {
   tieBreakHarness.store.set(ACTIVE_NAME_KEY, "WanderingFeet");
   await bootApp(tieBreakHarness, summarySource, source);
   assert.equal(tieBreakHarness.elements.rankValue.textContent, "#2 of 3");
+  assert.equal(tieBreakHarness.elements.totalMovesValue.textContent, "4 moves");
   assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /FastFeet/);
   assert.match(tieBreakHarness.elements.leaderboardBody.children[0].innerHTML, /2 moves/);
   assert.match(tieBreakHarness.elements.leaderboardBody.children[1].innerHTML, /WanderingFeet/);
