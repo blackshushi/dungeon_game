@@ -109,6 +109,69 @@ runTest("rejects duplicate level names ignoring case", () => {
   );
 });
 
+runTest("rejects levels without a top-left start", () => {
+  const data = createValidData({
+    levels: [
+      {
+        id: 1,
+        name: "Side Start",
+        size: [3, 3],
+        grid: [
+          ".S.",
+          "...",
+          "..E",
+        ],
+      },
+    ],
+  });
+  assert.throws(
+    () => validateLevelData(data),
+    /must start at top-left/,
+  );
+});
+
+runTest("rejects levels without a bottom-right exit", () => {
+  const data = createValidData({
+    levels: [
+      {
+        id: 1,
+        name: "Early Exit",
+        size: [3, 3],
+        grid: [
+          "S..",
+          ".E.",
+          "...",
+        ],
+      },
+    ],
+  });
+  assert.throws(
+    () => validateLevelData(data),
+    /must exit at bottom-right/,
+  );
+});
+
+runTest("rejects unknown tile symbols", () => {
+  const data = createValidData({
+    levels: [
+      {
+        id: 1,
+        name: "Marked Hall",
+        size: [3, 3],
+        grid: [
+          "S.X",
+          ".#.",
+          "..E",
+        ],
+      },
+    ],
+  });
+  assert.throws(
+    () => validateLevelData(data),
+    /contains unknown tile X/,
+  );
+});
+
 runTest("rejects levels without a survivable path", () => {
   const data = createValidData({
     levels: [
