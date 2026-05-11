@@ -304,6 +304,11 @@ th:last-child {
   border-color: rgba(255, 209, 102, 0.75);
 }
 
+.level-card.next .level-status {
+  color: var(--accent);
+  font-weight: 800;
+}
+
 .level-card.locked {
   border-style: dashed;
   cursor: not-allowed;

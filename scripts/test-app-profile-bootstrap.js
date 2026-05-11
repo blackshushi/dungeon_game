@@ -459,8 +459,12 @@ async function runTest() {
   await bootApp(harness, summarySource, source);
 
   assert.equal(harness.elements.levelList.children.length, 2);
+  assert.match(harness.elements.levelList.children[0].innerHTML, /Next up/);
+  assert.equal(harness.elements.levelList.children[0].attributes["aria-current"], "step");
+  assert.match(harness.elements.levelList.children[0].attributes["aria-label"], /Level 1: Profile Path\. Next up/);
   assert.match(harness.elements.levelList.children[0].innerHTML, /2-move route/);
   assert.match(harness.elements.levelList.children[0].innerHTML, /Calm route: 0 bombs, 0 healing pots/);
+  assert.match(harness.elements.levelList.children[1].attributes["aria-label"], /Clear level 1 to unlock/);
   assert.match(harness.elements.levelList.children[1].innerHTML, /route unavailable/i);
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
