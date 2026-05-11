@@ -92,6 +92,7 @@ function createHarness(levelData = null) {
     "levelValue",
     "hpValue",
     "timerValue",
+    "moveValue",
     "bestTimeValue",
     "levelName",
     "levelMeta",
@@ -400,6 +401,7 @@ async function runTest() {
   assert.match(harness.elements.levelList.children[1].innerHTML, /High pressure: 3 bombs, 0 healing pots/);
   harness.elements.levelList.children[0].click();
   assert.equal(harness.elements.timerValue.textContent, "0.0s");
+  assert.equal(harness.elements.moveValue.textContent, "0");
   assert.equal(
     harness.elements.levelMeta.textContent,
     "2 x 2 grid - 2-move route - lowest HP 3/5 - 0 bombs - 0 healing pots",
@@ -408,11 +410,14 @@ async function runTest() {
 
   harness.moveButtons.left.click();
   assert.equal(harness.getIntervalStarts(), 0);
+  assert.equal(harness.elements.moveValue.textContent, "0");
   assert.equal(harness.elements.eventLog.textContent, "The wall holds.");
   harness.moveButtons.right.click();
   assert.equal(harness.getIntervalStarts(), 1);
+  assert.equal(harness.elements.moveValue.textContent, "1");
   harness.moveButtons.down.click();
   assert.equal(harness.getIntervalClears(), 1);
+  assert.equal(harness.elements.moveValue.textContent, "2");
   assert.match(harness.elements.resultText.textContent, /^Profile Path finished in \d+\.\ds, 2 moves, 3\/5 HP\.$/);
 
   assert.equal(harness.store.get(ACTIVE_NAME_KEY), "Dana");
