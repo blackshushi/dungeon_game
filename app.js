@@ -77,6 +77,7 @@ const els = {
   rankValue: document.querySelector("#rankValue"),
   latestLevelValue: document.querySelector("#latestLevelValue"),
   totalTimeValue: document.querySelector("#totalTimeValue"),
+  totalMovesValue: document.querySelector("#totalMovesValue"),
   leaderboardBody: document.querySelector("#leaderboardBody"),
   levelList: document.querySelector("#levelList"),
   board: document.querySelector("#board"),
@@ -442,6 +443,7 @@ function renderLobby() {
   els.rankValue.textContent = getRank(profile);
   els.latestLevelValue.textContent = profile ? `${profile.latestLevel}/${state.levels.length || 10}` : "-";
   els.totalTimeValue.textContent = profile && getTotalBestTime(profile) ? formatTime(getTotalBestTime(profile)) : "-";
+  els.totalMovesValue.textContent = profile && getTotalBestMoves(profile) ? formatMoveCount(getTotalBestMoves(profile)) : "-";
   els.startButton.disabled = !state.levels.length;
   const nextLevelId = progression.getNextLevelId(profile?.latestLevel || 0, state.levels.length);
   if (!state.levels.length || nextLevelId <= 1) {
