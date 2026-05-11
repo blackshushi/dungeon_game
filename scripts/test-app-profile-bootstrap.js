@@ -224,6 +224,12 @@ async function bootApp(harness, summarySource, source) {
   await Promise.resolve();
 }
 
+function clickMoves(harness, directions) {
+  for (const direction of directions) {
+    harness.moveButtons[direction].click();
+  }
+}
+
 async function runTest() {
   const root = path.resolve(__dirname, "..");
   const summarySource = fs.readFileSync(path.join(root, "level-summary.js"), "utf8");
@@ -389,6 +395,64 @@ async function runTest() {
   assert.equal(customHealthHarness.elements.hpValue.textContent, "3/4");
   customHealthHarness.moveButtons.right.click();
   assert.match(customHealthHarness.elements.resultText.textContent, /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\.$/);
+
+  const progressionHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "First Gate",
+        size: [2, 1],
+        grid: [
+          "SE",
+        ],
+      },
+      {
+        id: 2,
+        name: "Second Gate",
+        size: [3, 1],
+        grid: [
+          "S.E",
+        ],
+      },
+    ],
+  });
+  progressionHarness.elements.usernameInput.value = "Ivy";
+  await bootApp(progressionHarness, summarySource, source);
+  progressionHarness.elements.startButton.click();
+  assert.equal(progressionHarness.elements.levelValue.textContent, "1/2");
+  assert.equal(progressionHarness.elements.moveValue.textContent, "0");
+
+  clickMoves(progressionHarness, ["right"]);
+  assert.equal(progressionHarness.elements.resultTitle.textContent, "Level clear");
+  assert.equal(progressionHarness.elements.nextButton.textContent, "Next Level");
+  let progressionProfiles = JSON.parse(progressionHarness.store.get(STORAGE_KEY));
+  assert.equal(progressionProfiles.Ivy.latestLevel, 1);
+  assert.equal(progressionProfiles.Ivy.bestMoves["1"], 1);
+  assert.equal(progressionProfiles.Ivy.runs.length, 1);
+  assert.equal(progressionProfiles.Ivy.runs[0].outcome, "cleared");
+
+  progressionHarness.elements.nextButton.click();
+  assert.equal(progressionHarness.elements.levelValue.textContent, "2/2");
+  assert.equal(progressionHarness.elements.timerValue.textContent, "0.0s");
+  assert.equal(progressionHarness.elements.moveValue.textContent, "0");
+
+  clickMoves(progressionHarness, ["right", "right"]);
+  assert.equal(progressionHarness.elements.resultTitle.textContent, "Dungeon clear");
+  assert.equal(progressionHarness.elements.nextButton.textContent, "Lobby");
+  progressionProfiles = JSON.parse(progressionHarness.store.get(STORAGE_KEY));
+  assert.equal(progressionProfiles.Ivy.latestLevel, 2);
+  assert.equal(progressionProfiles.Ivy.bestMoves["2"], 2);
+  assert.equal(progressionProfiles.Ivy.runs.length, 2);
+  assert.equal(progressionProfiles.Ivy.runs[1].outcome, "cleared");
+  const secondRunStates = progressionProfiles.Ivy.runs[1].states;
+  const finalProgressionState = secondRunStates[secondRunStates.length - 1];
+  assert.equal(finalProgressionState.outcome, "cleared");
+
+  progressionHarness.elements.nextButton.click();
+  assert.equal(progressionHarness.elements.lobbyView.hidden, false);
+  assert.equal(progressionHarness.elements.gameView.hidden, true);
+  assert.equal(progressionHarness.elements.latestLevelValue.textContent, "2/2");
+  assert.equal(progressionHarness.elements.startButton.textContent, "Replay Final Level");
 
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
