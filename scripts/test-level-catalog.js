@@ -21,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 44 as the final catalog entry", () => {
+runTest("ships level 45 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 44);
-  assert.equal(finalLevel.id, 44);
-  assert.equal(finalLevel.name, "Ironbloom Reliquary");
-  assert.deepEqual(finalLevel.size, [25, 25]);
+  assert.equal(levelData.levels.length, 45);
+  assert.equal(finalLevel.id, 45);
+  assert.equal(finalLevel.name, "Cinderflow Confluence");
+  assert.deepEqual(finalLevel.size, [27, 27]);
 });
 
-runTest("level 44 has a valid survivable route", () => {
+runTest("level 45 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -48,6 +48,7 @@ runTest("compact late-game levels create meaningful HP pressure", () => {
     { id: 42, moves: 48, bombs: 5, heals: 3 },
     { id: 43, moves: 48, bombs: 7, heals: 5 },
     { id: 44, moves: 48, bombs: 8, heals: 6 },
+    { id: 45, moves: 52, bombs: 5, heals: 4 },
   ];
 
   for (const expectation of expectations) {
@@ -70,6 +71,7 @@ runTest("compact late-game levels offer branching route choices", () => {
     { id: 42, branches: 300 },
     { id: 43, branches: 400 },
     { id: 44, branches: 400 },
+    { id: 45, branches: 400 },
   ];
 
   for (const expectation of expectations) {
