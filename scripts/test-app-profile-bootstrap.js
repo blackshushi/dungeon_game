@@ -136,6 +136,7 @@ function createHarness(levelData = null) {
   let now = 1000;
   let intervalStarts = 0;
   let intervalClears = 0;
+  const windowListeners = {};
   const window = {
     DUNGEON_LEVEL_DATA: levelData || {
       levels: [
@@ -158,7 +159,10 @@ function createHarness(levelData = null) {
         },
       ],
     },
-    addEventListener() {},
+    addEventListener(type, handler) {
+      windowListeners[type] = windowListeners[type] || [];
+      windowListeners[type].push(handler);
+    },
     setInterval() {
       intervalStarts += 1;
       return intervalStarts;
@@ -191,6 +195,23 @@ function createHarness(levelData = null) {
     elements,
     moveButtons: Object.fromEntries(moveButtons.map((button) => [button.dataset.move, button])),
     store,
+    dispatchWindowEvent(type, event = {}) {
+      const syntheticEvent = {
+        type,
+        defaultPrevented: false,
+        ...event,
+      };
+      syntheticEvent.preventDefault = () => {
+        syntheticEvent.defaultPrevented = true;
+        if (typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+      };
+      for (const handler of windowListeners[type] || []) {
+        handler(syntheticEvent);
+      }
+      return syntheticEvent;
+    },
     getIntervalStarts() {
       return intervalStarts;
     },
@@ -399,6 +420,65 @@ async function runTest() {
     /^Recovery Start finished in \d+\.\ds, 2 moves, 3\/4 HP\. New best time and moves\. Next: Short Fuse\.$/,
   );
 
+  const keyboardHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Keyboard Hall",
+        size: [3, 1],
+        grid: [
+          "S.E",
+        ],
+      },
+    ],
+  });
+  keyboardHarness.elements.usernameInput.value = "Keys";
+  await bootApp(keyboardHarness, summarySource, source);
+  keyboardHarness.elements.startButton.click();
+  const ignoredKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "x" });
+  assert.equal(ignoredKey.defaultPrevented, false);
+  assert.equal(keyboardHarness.elements.moveValue.textContent, "0");
+  assert.equal(keyboardHarness.getIntervalStarts(), 0);
+  const firstMoveKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "d" });
+  assert.equal(firstMoveKey.defaultPrevented, true);
+  assert.equal(keyboardHarness.elements.moveValue.textContent, "1");
+  assert.equal(keyboardHarness.getIntervalStarts(), 1);
+  const clearKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(clearKey.defaultPrevented, true);
+  assert.equal(keyboardHarness.elements.resultTitle.textContent, "Dungeon clear");
+  const keyboardProfiles = JSON.parse(keyboardHarness.store.get(STORAGE_KEY));
+  assert.equal(keyboardProfiles.Keys.runs.length, 1);
+  assert.equal(keyboardProfiles.Keys.runs[0].outcome, "cleared");
+  const doneKey = keyboardHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(doneKey.defaultPrevented, false);
+  assert.equal(JSON.parse(keyboardHarness.store.get(STORAGE_KEY)).Keys.runs.length, 1);
+
+  const wallStartHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Wall Clock",
+        size: [3, 2],
+        grid: [
+          "S#E",
+          "...",
+        ],
+      },
+    ],
+  });
+  wallStartHarness.elements.usernameInput.value = "Walls";
+  await bootApp(wallStartHarness, summarySource, source);
+  wallStartHarness.elements.startButton.click();
+  const blockedFirstKey = wallStartHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(blockedFirstKey.defaultPrevented, true);
+  assert.equal(wallStartHarness.elements.moveValue.textContent, "0");
+  assert.equal(wallStartHarness.getIntervalStarts(), 0);
+  assert.equal(wallStartHarness.elements.timerValue.textContent, "0.0s");
+  const firstOpenKey = wallStartHarness.dispatchWindowEvent("keydown", { key: "ArrowDown" });
+  assert.equal(firstOpenKey.defaultPrevented, true);
+  assert.equal(wallStartHarness.elements.moveValue.textContent, "1");
+  assert.equal(wallStartHarness.getIntervalStarts(), 1);
+
   const progressionHarness = createHarness({
     levels: [
       {
@@ -464,6 +544,49 @@ async function runTest() {
   assert.equal(progressionHarness.elements.gameView.hidden, true);
   assert.equal(progressionHarness.elements.latestLevelValue.textContent, "2/2");
   assert.equal(progressionHarness.elements.startButton.textContent, "Replay Final Level");
+
+  const replayHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Known Shortcut",
+        size: [2, 1],
+        grid: [
+          "SE",
+        ],
+      },
+      {
+        id: 2,
+        name: "Next Door",
+        size: [2, 1],
+        grid: [
+          "SE",
+        ],
+      },
+    ],
+  });
+  replayHarness.store.set(STORAGE_KEY, JSON.stringify({
+    Nia: {
+      name: "Nia",
+      latestLevel: 1,
+      bestTimes: { 1: 1 },
+      bestMoves: { 1: 1 },
+      runs: [],
+      createdAt: "2026-05-12T00:00:00.000Z",
+    },
+  }));
+  replayHarness.store.set(ACTIVE_NAME_KEY, "Nia");
+  await bootApp(replayHarness, summarySource, source);
+  replayHarness.elements.levelList.children[0].click();
+  replayHarness.moveButtons.right.click();
+  assert.match(
+    replayHarness.elements.resultText.textContent,
+    /^Known Shortcut finished in \d+\.\ds, 1 move, 3\/5 HP\. Next: Next Door\.$/,
+  );
+  assert.doesNotMatch(replayHarness.elements.resultText.textContent, /New best/);
+  const replayProfiles = JSON.parse(replayHarness.store.get(STORAGE_KEY));
+  assert.equal(replayProfiles.Nia.bestTimes["1"], 1);
+  assert.equal(replayProfiles.Nia.bestMoves["1"], 1);
 
   const harness = createHarness();
   harness.elements.usernameInput.value = "Dana";
