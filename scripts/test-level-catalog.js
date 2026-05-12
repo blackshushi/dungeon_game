@@ -21,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 39 as the final catalog entry", () => {
+runTest("ships level 40 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 39);
-  assert.equal(finalLevel.id, 39);
-  assert.equal(finalLevel.name, "Nightglass Spiral");
-  assert.deepEqual(finalLevel.size, [113, 113]);
+  assert.equal(levelData.levels.length, 40);
+  assert.equal(finalLevel.id, 40);
+  assert.equal(finalLevel.name, "Verdant Crossroads");
+  assert.deepEqual(finalLevel.size, [21, 21]);
 });
 
-runTest("level 39 has a valid survivable route", () => {
+runTest("level 40 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -40,7 +40,7 @@ runTest("level 39 has a valid survivable route", () => {
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
 });
 
-runTest("level 39 creates meaningful HP pressure", () => {
+runTest("level 40 creates meaningful HP pressure", () => {
   const finalLevel = levelData.levels.at(-1);
   const route = findSurvivableDirectPath(finalLevel.grid, levelData.startHp, levelData.maxHp);
   assert.ok(route);
@@ -54,10 +54,16 @@ runTest("level 39 creates meaningful HP pressure", () => {
     { bombs: 0, heals: 0, lowestHp: levelData.startHp },
   );
 
-  assert.equal(route.length - 1, 6496);
-  assert.equal(stats.bombs, 2598);
-  assert.equal(stats.heals, 2598);
+  assert.equal(route.length - 1, 40);
+  assert.equal(stats.bombs, 4);
+  assert.equal(stats.heals, 2);
   assert.equal(stats.lowestHp, 1);
+});
+
+runTest("level 40 offers branching route choices", () => {
+  const finalLevel = levelData.levels.at(-1);
+
+  assert.ok(countBranchingTiles(finalLevel.grid) >= 80);
 });
 
 runTest("every shipped level has a direct survivable route", () => {
@@ -72,4 +78,32 @@ console.log(`\n${passed} passed, ${failed} failed.`);
 
 if (failed > 0) {
   process.exit(1);
+}
+
+function countBranchingTiles(grid) {
+  const deltas = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  let branches = 0;
+
+  for (let y = 0; y < grid.length; y += 1) {
+    for (let x = 0; x < grid[y].length; x += 1) {
+      if (grid[y][x] === "#") {
+        continue;
+      }
+
+      const exits = deltas.filter((delta) => {
+        const row = grid[y + delta.y];
+        return row && row[x + delta.x] && row[x + delta.x] !== "#";
+      }).length;
+      if (exits >= 3) {
+        branches += 1;
+      }
+    }
+  }
+
+  return branches;
 }
