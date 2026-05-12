@@ -453,6 +453,32 @@ async function runTest() {
   assert.equal(doneKey.defaultPrevented, false);
   assert.equal(JSON.parse(keyboardHarness.store.get(STORAGE_KEY)).Keys.runs.length, 1);
 
+  const wallStartHarness = createHarness({
+    levels: [
+      {
+        id: 1,
+        name: "Wall Clock",
+        size: [3, 2],
+        grid: [
+          "S#E",
+          "...",
+        ],
+      },
+    ],
+  });
+  wallStartHarness.elements.usernameInput.value = "Walls";
+  await bootApp(wallStartHarness, summarySource, source);
+  wallStartHarness.elements.startButton.click();
+  const blockedFirstKey = wallStartHarness.dispatchWindowEvent("keydown", { key: "ArrowRight" });
+  assert.equal(blockedFirstKey.defaultPrevented, true);
+  assert.equal(wallStartHarness.elements.moveValue.textContent, "0");
+  assert.equal(wallStartHarness.getIntervalStarts(), 0);
+  assert.equal(wallStartHarness.elements.timerValue.textContent, "0.0s");
+  const firstOpenKey = wallStartHarness.dispatchWindowEvent("keydown", { key: "ArrowDown" });
+  assert.equal(firstOpenKey.defaultPrevented, true);
+  assert.equal(wallStartHarness.elements.moveValue.textContent, "1");
+  assert.equal(wallStartHarness.getIntervalStarts(), 1);
+
   const progressionHarness = createHarness({
     levels: [
       {
