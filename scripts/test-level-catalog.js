@@ -40,30 +40,33 @@ runTest("level 41 has a valid survivable route", () => {
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
 });
 
-runTest("level 41 creates meaningful HP pressure", () => {
-  const finalLevel = levelData.levels.at(-1);
-  const route = findSurvivableDirectPath(finalLevel.grid, levelData.startHp, levelData.maxHp);
-  assert.ok(route);
-  const stats = route.slice(1).reduce(
-    (total, step) => {
-      if (step.tile === "B") total.bombs += 1;
-      if (step.tile === "H") total.heals += 1;
-      total.lowestHp = Math.min(total.lowestHp, step.hp);
-      return total;
-    },
-    { bombs: 0, heals: 0, lowestHp: levelData.startHp },
-  );
+runTest("compact late-game levels create meaningful HP pressure", () => {
+  const expectations = [
+    { id: 40, moves: 40, bombs: 4, heals: 2 },
+    { id: 41, moves: 44, bombs: 6, heals: 4 },
+  ];
 
-  assert.equal(route.length - 1, 44);
-  assert.equal(stats.bombs, 6);
-  assert.equal(stats.heals, 4);
-  assert.equal(stats.lowestHp, 1);
+  for (const expectation of expectations) {
+    const route = findSurvivableDirectPath(getLevel(expectation.id).grid, levelData.startHp, levelData.maxHp);
+    assert.ok(route);
+    const stats = getRouteStats(route);
+
+    assert.equal(route.length - 1, expectation.moves);
+    assert.equal(stats.bombs, expectation.bombs);
+    assert.equal(stats.heals, expectation.heals);
+    assert.equal(stats.lowestHp, 1);
+  }
 });
 
-runTest("level 41 offers branching route choices", () => {
-  const finalLevel = levelData.levels.at(-1);
+runTest("compact late-game levels offer branching route choices", () => {
+  const expectations = [
+    { id: 40, branches: 80 },
+    { id: 41, branches: 120 },
+  ];
 
-  assert.ok(countBranchingTiles(finalLevel.grid) >= 120);
+  for (const expectation of expectations) {
+    assert.ok(countBranchingTiles(getLevel(expectation.id).grid) >= expectation.branches);
+  }
 });
 
 runTest("every shipped level has a direct survivable route", () => {
@@ -78,6 +81,24 @@ console.log(`\n${passed} passed, ${failed} failed.`);
 
 if (failed > 0) {
   process.exit(1);
+}
+
+function getLevel(id) {
+  const level = levelData.levels.find((candidate) => candidate.id === id);
+  assert.ok(level, `Expected level ${id} to exist`);
+  return level;
+}
+
+function getRouteStats(route) {
+  return route.slice(1).reduce(
+    (total, step) => {
+      if (step.tile === "B") total.bombs += 1;
+      if (step.tile === "H") total.heals += 1;
+      total.lowestHp = Math.min(total.lowestHp, step.hp);
+      return total;
+    },
+    { bombs: 0, heals: 0, lowestHp: levelData.startHp },
+  );
 }
 
 function countBranchingTiles(grid) {
