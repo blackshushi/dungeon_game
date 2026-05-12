@@ -21,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 40 as the final catalog entry", () => {
+runTest("ships level 41 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 40);
-  assert.equal(finalLevel.id, 40);
-  assert.equal(finalLevel.name, "Verdant Crossroads");
-  assert.deepEqual(finalLevel.size, [21, 21]);
+  assert.equal(levelData.levels.length, 41);
+  assert.equal(finalLevel.id, 41);
+  assert.equal(finalLevel.name, "Emberlock Atrium");
+  assert.deepEqual(finalLevel.size, [23, 23]);
 });
 
-runTest("level 40 has a valid survivable route", () => {
+runTest("level 41 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -40,7 +40,7 @@ runTest("level 40 has a valid survivable route", () => {
   assert.equal(hasSurvivablePath(finalLevel.grid, levelData.startHp, levelData.maxHp), true);
 });
 
-runTest("level 40 creates meaningful HP pressure", () => {
+runTest("level 41 creates meaningful HP pressure", () => {
   const finalLevel = levelData.levels.at(-1);
   const route = findSurvivableDirectPath(finalLevel.grid, levelData.startHp, levelData.maxHp);
   assert.ok(route);
@@ -54,16 +54,16 @@ runTest("level 40 creates meaningful HP pressure", () => {
     { bombs: 0, heals: 0, lowestHp: levelData.startHp },
   );
 
-  assert.equal(route.length - 1, 40);
-  assert.equal(stats.bombs, 4);
-  assert.equal(stats.heals, 2);
+  assert.equal(route.length - 1, 44);
+  assert.equal(stats.bombs, 6);
+  assert.equal(stats.heals, 4);
   assert.equal(stats.lowestHp, 1);
 });
 
-runTest("level 40 offers branching route choices", () => {
+runTest("level 41 offers branching route choices", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.ok(countBranchingTiles(finalLevel.grid) >= 80);
+  assert.ok(countBranchingTiles(finalLevel.grid) >= 120);
 });
 
 runTest("every shipped level has a direct survivable route", () => {
