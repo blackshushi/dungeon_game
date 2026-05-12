@@ -42,6 +42,7 @@ runTest("level 41 has a valid survivable route", () => {
 
 runTest("compact late-game levels create meaningful HP pressure", () => {
   const expectations = [
+    { id: 39, moves: 40, bombs: 10, heals: 9 },
     { id: 40, moves: 40, bombs: 4, heals: 2 },
     { id: 41, moves: 44, bombs: 6, heals: 4 },
   ];
@@ -60,6 +61,7 @@ runTest("compact late-game levels create meaningful HP pressure", () => {
 
 runTest("compact late-game levels offer branching route choices", () => {
   const expectations = [
+    { id: 39, branches: 250 },
     { id: 40, branches: 80 },
     { id: 41, branches: 120 },
   ];
