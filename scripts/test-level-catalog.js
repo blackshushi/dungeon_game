@@ -21,16 +21,16 @@ function runTest(name, fn) {
   }
 }
 
-runTest("ships level 42 as the final catalog entry", () => {
+runTest("ships level 43 as the final catalog entry", () => {
   const finalLevel = levelData.levels.at(-1);
 
-  assert.equal(levelData.levels.length, 42);
-  assert.equal(finalLevel.id, 42);
-  assert.equal(finalLevel.name, "Frostvein Crucible");
+  assert.equal(levelData.levels.length, 43);
+  assert.equal(finalLevel.id, 43);
+  assert.equal(finalLevel.name, "Stormglass Labyrinth");
   assert.deepEqual(finalLevel.size, [25, 25]);
 });
 
-runTest("level 42 has a valid survivable route", () => {
+runTest("level 43 has a valid survivable route", () => {
   const finalLevel = levelData.levels.at(-1);
 
   assert.equal(finalLevel.grid.length, finalLevel.size[1]);
@@ -46,6 +46,7 @@ runTest("compact late-game levels create meaningful HP pressure", () => {
     { id: 40, moves: 40, bombs: 4, heals: 2 },
     { id: 41, moves: 44, bombs: 6, heals: 4 },
     { id: 42, moves: 48, bombs: 5, heals: 3 },
+    { id: 43, moves: 48, bombs: 7, heals: 5 },
   ];
 
   for (const expectation of expectations) {
@@ -66,6 +67,7 @@ runTest("compact late-game levels offer branching route choices", () => {
     { id: 40, branches: 80 },
     { id: 41, branches: 120 },
     { id: 42, branches: 300 },
+    { id: 43, branches: 400 },
   ];
 
   for (const expectation of expectations) {
